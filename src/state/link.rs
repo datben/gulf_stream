@@ -80,11 +80,19 @@ pub mod test {
             let next_block_1_0 = Block::create_block(1, &genesis.block.blockhash, 0);
             let next_block_1_1 = Block::create_block(1, &genesis.block.blockhash, 1);
             let next_block_2_0 = Block::create_block(2, &next_block_1_0.blockhash, 0);
+            let next_block_2_1 = Block::create_block(2, &next_block_1_1.blockhash, 0);
             let next_block_4_0 = Block::create_block(4, &next_block_1_0.blockhash, 0);
 
             genesis.clone().try_insert(&next_block_1_0)?;
             genesis.clone().try_insert(&next_block_1_1)?;
             genesis.clone().try_insert(&next_block_2_0)?;
+            genesis
+                .next_blocks
+                .borrow()
+                .get(1)
+                .unwrap()
+                .clone()
+                .try_insert(&next_block_2_1)?;
 
             assert_eq!(
                 genesis.next_blocks.borrow().get(0).unwrap().block,
@@ -108,6 +116,20 @@ pub mod test {
                     .unwrap()
                     .block,
                 next_block_2_0
+            );
+
+            assert_eq!(
+                genesis
+                    .next_blocks
+                    .borrow()
+                    .get(1)
+                    .unwrap()
+                    .next_blocks
+                    .borrow()
+                    .get(0)
+                    .unwrap()
+                    .block,
+                next_block_2_1
             );
 
             assert_eq!(
