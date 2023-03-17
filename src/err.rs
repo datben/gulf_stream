@@ -1,17 +1,15 @@
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Error {
     Default,
-    CannotConvertIntoString,
+    WrongParentBlockhash,
+    LinkAlreadyFilled,
+    NoMoreOlderBlocks,
+    MissingIntermediateBlocks,
 }
+pub type Result<T> = std::result::Result<T, Error>;
 
 impl Default for Error {
     fn default() -> Self {
         Error::Default
-    }
-}
-
-impl From<bincode::Error> for Error {
-    fn from(_value: bincode::Error) -> Self {
-        Self::Default
     }
 }

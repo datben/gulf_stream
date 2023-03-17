@@ -1,6 +1,6 @@
 use sha2::{Digest, Sha256};
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, PartialEq)]
 pub struct Blockhash(pub Vec<u8>);
 
 impl std::fmt::Display for Blockhash {
