@@ -1,16 +1,19 @@
 use super::block::Block;
 use crate::err::*;
-use std::{cell::RefCell, fmt::Display, rc::Rc};
+use std::{
+    fmt::Display,
+    sync::{Arc, Mutex},
+};
 
 #[derive(Default)]
 pub struct Link {
-    pub block_parent: Option<Rc<Link>>,
+    pub block_parent: Option<Arc<Link>>,
     pub block: Block,
-    pub next_blocks: RefCell<Vec<Rc<Link>>>,
+    pub next_blocks: Mutex<Vec<Arc<Link>>>,
 }
 
 impl Link {
-    pub fn try_insert(self: Rc<Link>, block: &Block) -> Result<()> {
+    pub fn try_insert(self: Arc<Link>, block: &Block) -> Result<()> {
         if block.index == self.block.index + 1 {
             if block.previous_blockhash.eq(&self.block.blockhash) {
                 self.insert(block.clone());
@@ -27,7 +30,8 @@ impl Link {
         } else {
             return self
                 .next_blocks
-                .borrow()
+                .try_lock()
+                .unwrap()
                 .iter()
                 .fold(Err(Error::Default), |res, link| {
                     return match res {
@@ -39,8 +43,8 @@ impl Link {
         }
     }
 
-    fn insert(self: Rc<Link>, block: Block) {
-        self.next_blocks.borrow_mut().push(
+    fn insert(self: Arc<Link>, block: Block) {
+        self.next_blocks.try_lock().unwrap().push(
             Self {
                 block_parent: self.clone().into(),
                 block,
@@ -58,7 +62,8 @@ impl Display for Link {
             "current {:?}\n next block {:?}",
             self.block,
             self.next_blocks
-                .borrow()
+                .try_lock()
+                .unwrap()
                 .iter()
                 .map(|link| { return link.block.clone() })
                 .collect::<Vec<Block>>()
@@ -75,7 +80,7 @@ pub mod test {
 
         #[test]
         pub fn create_link() -> Result<()> {
-            let genesis = Rc::new(Link::default());
+            let genesis = Arc::new(Link::default());
 
             let next_block_1_0 = Block::create_block(1, &genesis.block.blockhash, 0);
             let next_block_1_1 = Block::create_block(1, &genesis.block.blockhash, 1);
@@ -88,30 +93,45 @@ pub mod test {
             genesis.clone().try_insert(&next_block_2_0)?;
             genesis
                 .next_blocks
-                .borrow()
+                .try_lock()
+                .unwrap()
                 .get(1)
                 .unwrap()
                 .clone()
                 .try_insert(&next_block_2_1)?;
 
             assert_eq!(
-                genesis.next_blocks.borrow().get(0).unwrap().block,
+                genesis
+                    .next_blocks
+                    .try_lock()
+                    .unwrap()
+                    .get(0)
+                    .unwrap()
+                    .block,
                 next_block_1_0
             );
 
             assert_eq!(
-                genesis.next_blocks.borrow().get(1).unwrap().block,
+                genesis
+                    .next_blocks
+                    .try_lock()
+                    .unwrap()
+                    .get(1)
+                    .unwrap()
+                    .block,
                 next_block_1_1
             );
 
             assert_eq!(
                 genesis
                     .next_blocks
-                    .borrow()
+                    .try_lock()
+                    .unwrap()
                     .get(0)
                     .unwrap()
                     .next_blocks
-                    .borrow()
+                    .try_lock()
+                    .unwrap()
                     .get(0)
                     .unwrap()
                     .block,
@@ -121,11 +141,13 @@ pub mod test {
             assert_eq!(
                 genesis
                     .next_blocks
-                    .borrow()
+                    .try_lock()
+                    .unwrap()
                     .get(1)
                     .unwrap()
                     .next_blocks
-                    .borrow()
+                    .try_lock()
+                    .unwrap()
                     .get(0)
                     .unwrap()
                     .block,

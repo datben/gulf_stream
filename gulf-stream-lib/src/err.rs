@@ -5,6 +5,7 @@ pub enum Error {
     LinkAlreadyFilled,
     NoMoreOlderBlocks,
     MissingIntermediateBlocks,
+    BlockIsNotValid,
 }
 pub type Result<T> = std::result::Result<T, Error>;
 

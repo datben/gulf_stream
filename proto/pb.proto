@@ -1,0 +1,22 @@
+syntax = "proto3";
+package pb;
+
+service Node {
+    rpc BlockHandler (SendBlock) returns (SendBlockResponse);
+}
+
+message SendBlock {
+    Block block = 1;
+}
+
+message SendBlockResponse {
+    string message = 1;
+}
+
+
+message Block {
+    uint64 index = 1;
+    bytes blockhash = 2;
+    bytes previous_blockhash = 3;
+    uint64 nonce = 4;
+}
