@@ -1,4 +1,4 @@
-use super::block::Block;
+use super::{block::Block, blockhash::Blockhash};
 use crate::err::*;
 use std::{
     fmt::Display,
@@ -13,45 +13,48 @@ pub struct Link {
 }
 
 impl Link {
-    pub fn try_insert(self: Arc<Link>, block: &Block) -> Result<()> {
-        if block.index == self.block.index + 1 {
-            if block.previous_blockhash.eq(&self.block.blockhash) {
-                self.insert(block.clone());
-                return Ok(());
+    pub fn try_find_block(self: Arc<Link>, blockhash: &Blockhash, index: u64) -> Result<Arc<Link>> {
+        if index == self.block.index {
+            if blockhash.eq(&self.block.blockhash) {
+                Ok(self.clone())
             } else {
-                return Err(Error::WrongParentBlockhash);
+                Err(GulfStreamError::BlockNotFound)
             }
-        } else if block.index <= self.block.index {
-            return if let Some(block_parent) = &self.block_parent {
-                block_parent.clone().try_insert(block)
-            } else {
-                Err(Error::NoMoreOlderBlocks)
-            };
+        } else if index < self.block.index {
+            return Err(GulfStreamError::WrongIndex);
         } else {
-            return self
-                .next_blocks
-                .try_lock()
-                .unwrap()
-                .iter()
-                .fold(Err(Error::Default), |res, link| {
+            return self.next_blocks.try_lock()?.iter().fold(
+                Err(GulfStreamError::BlockNotFound),
+                |res, link| {
                     return match res {
-                        Ok(_) => Ok(()),
-                        Err(_) => link.clone().try_insert(block),
+                        Ok(result) => Ok(result),
+                        Err(_) => link.clone().try_find_block(blockhash, index),
                     };
-                })
-                .map_err(|_| Error::MissingIntermediateBlocks);
+                },
+            );
         }
     }
 
-    fn insert(self: Arc<Link>, block: Block) {
-        self.next_blocks.try_lock().unwrap().push(
-            Self {
-                block_parent: self.clone().into(),
-                block,
-                next_blocks: vec![].into(),
+    pub fn try_insert(self: Arc<Link>, block: &Block) -> Result<Arc<Link>> {
+        return if block.index == self.block.index + 1 {
+            if block.previous_blockhash.eq(&self.block.blockhash) {
+                self.unsafe_insert(block.clone())
+            } else {
+                Err(GulfStreamError::WrongParentBlockhash)
             }
-            .into(),
-        )
+        } else {
+            Err(GulfStreamError::WrongIndex)
+        };
+    }
+
+    fn unsafe_insert(self: Arc<Link>, block: Block) -> Result<Arc<Link>> {
+        let new_link = Arc::new(Self {
+            block_parent: self.clone().into(),
+            block,
+            next_blocks: vec![].into(),
+        });
+        self.next_blocks.try_lock()?.push(new_link.clone());
+        return Ok(new_link);
     }
 }
 
@@ -68,98 +71,5 @@ impl Display for Link {
                 .map(|link| { return link.block.clone() })
                 .collect::<Vec<Block>>()
         )
-    }
-}
-
-#[cfg(test)]
-pub mod test {
-    use super::*;
-
-    pub mod link {
-        use super::*;
-
-        #[test]
-        pub fn create_link() -> Result<()> {
-            let genesis = Arc::new(Link::default());
-
-            let next_block_1_0 = Block::create_block(1, &genesis.block.blockhash, 0);
-            let next_block_1_1 = Block::create_block(1, &genesis.block.blockhash, 1);
-            let next_block_2_0 = Block::create_block(2, &next_block_1_0.blockhash, 0);
-            let next_block_2_1 = Block::create_block(2, &next_block_1_1.blockhash, 0);
-            let next_block_4_0 = Block::create_block(4, &next_block_1_0.blockhash, 0);
-
-            genesis.clone().try_insert(&next_block_1_0)?;
-            genesis.clone().try_insert(&next_block_1_1)?;
-            genesis.clone().try_insert(&next_block_2_0)?;
-            genesis
-                .next_blocks
-                .try_lock()
-                .unwrap()
-                .get(1)
-                .unwrap()
-                .clone()
-                .try_insert(&next_block_2_1)?;
-
-            assert_eq!(
-                genesis
-                    .next_blocks
-                    .try_lock()
-                    .unwrap()
-                    .get(0)
-                    .unwrap()
-                    .block,
-                next_block_1_0
-            );
-
-            assert_eq!(
-                genesis
-                    .next_blocks
-                    .try_lock()
-                    .unwrap()
-                    .get(1)
-                    .unwrap()
-                    .block,
-                next_block_1_1
-            );
-
-            assert_eq!(
-                genesis
-                    .next_blocks
-                    .try_lock()
-                    .unwrap()
-                    .get(0)
-                    .unwrap()
-                    .next_blocks
-                    .try_lock()
-                    .unwrap()
-                    .get(0)
-                    .unwrap()
-                    .block,
-                next_block_2_0
-            );
-
-            assert_eq!(
-                genesis
-                    .next_blocks
-                    .try_lock()
-                    .unwrap()
-                    .get(1)
-                    .unwrap()
-                    .next_blocks
-                    .try_lock()
-                    .unwrap()
-                    .get(0)
-                    .unwrap()
-                    .block,
-                next_block_2_1
-            );
-
-            assert_eq!(
-                genesis.clone().try_insert(&next_block_4_0),
-                Err(Error::MissingIntermediateBlocks)
-            );
-
-            Ok(())
-        }
     }
 }

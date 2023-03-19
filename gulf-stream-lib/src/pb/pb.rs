@@ -10,3 +10,14 @@ impl Into<crate::state::block::Block> for Block {
         }
     }
 }
+
+impl From<crate::state::block::Block> for Block {
+    fn from(value: crate::state::block::Block) -> Self {
+        Block {
+            index: value.index,
+            blockhash: value.blockhash.into(),
+            previous_blockhash: value.previous_blockhash.into(),
+            nonce: value.nonce,
+        }
+    }
+}

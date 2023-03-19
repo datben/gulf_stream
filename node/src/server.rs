@@ -2,7 +2,7 @@ use gulf_stream_lib::pb::node_server::{Node, NodeServer};
 use gulf_stream_lib::pb::{SendBlock, SendBlockResponse};
 use gulf_stream_lib::state::block::Block;
 use gulf_stream_lib::state::blockchain::Blockchain;
-use std::sync::Mutex;
+use tokio::sync::Mutex;
 use tonic::{transport::Server, Request, Response, Status};
 
 pub struct GulfStreamNode {
@@ -17,10 +17,12 @@ impl Node for GulfStreamNode {
     ) -> Result<Response<SendBlockResponse>, Status> {
         let block: Block = request.into_inner().block.unwrap().into();
 
-        self.state.lock().unwrap().try_insert(&block).unwrap();
+        if let Err(err) = self.state.lock().await.try_insert(&block) {
+            return Err(err.into());
+        }
 
         let reply = SendBlockResponse {
-            message: format!("Ok"),
+            message: format!("Block {} inserted", block.blockhash),
         };
 
         return Ok(Response::new(reply));

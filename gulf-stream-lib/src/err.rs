@@ -1,16 +1,53 @@
+use std::sync::TryLockError;
+
+use tonic::Status;
+
 #[derive(Debug, Clone, PartialEq)]
-pub enum Error {
+pub enum GulfStreamError {
     Default,
     WrongParentBlockhash,
     LinkAlreadyFilled,
-    NoMoreOlderBlocks,
-    MissingIntermediateBlocks,
     BlockIsNotValid,
+    WrongIndex,
+    BlockNotFound,
+    TryLockError,
+    DidNotFindPreviousBlock,
 }
-pub type Result<T> = std::result::Result<T, Error>;
+pub type Result<T> = std::result::Result<T, GulfStreamError>;
 
-impl Default for Error {
+impl Default for GulfStreamError {
     fn default() -> Self {
-        Error::Default
+        GulfStreamError::Default
+    }
+}
+
+impl<T> From<TryLockError<T>> for GulfStreamError {
+    fn from(_value: TryLockError<T>) -> Self {
+        Self::TryLockError
+    }
+}
+
+impl Into<String> for GulfStreamError {
+    fn into(self) -> String {
+        match self {
+            GulfStreamError::Default => format!("GulfStreamError::Default"),
+            GulfStreamError::WrongParentBlockhash => {
+                format!("GulfStreamError::WrongParentBlockhash")
+            }
+            GulfStreamError::LinkAlreadyFilled => format!("GulfStreamError::LinkAlreadyFilled"),
+            GulfStreamError::BlockIsNotValid => format!("GulfStreamError::BlockIsNotValid"),
+            GulfStreamError::WrongIndex => format!("GulfStreamError::WrongIndex"),
+            GulfStreamError::BlockNotFound => format!("GulfStreamError::BlockNotFound"),
+            GulfStreamError::TryLockError => format!("GulfStreamError::TryLockError"),
+            GulfStreamError::DidNotFindPreviousBlock => {
+                format!("GulfStreamError::DidNotFindPreviousBlock")
+            }
+        }
+    }
+}
+
+impl Into<Status> for GulfStreamError {
+    fn into(self) -> Status {
+        Status::aborted(self)
     }
 }

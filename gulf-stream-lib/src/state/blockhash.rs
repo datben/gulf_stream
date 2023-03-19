@@ -5,13 +5,19 @@ pub struct Blockhash(pub Vec<u8>);
 
 impl std::fmt::Display for Blockhash {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:x?}", self.0)
+        self.0.iter().map(|byte| write!(f, "{:x?}", byte)).collect()
     }
 }
 
 impl From<Vec<u8>> for Blockhash {
     fn from(value: Vec<u8>) -> Self {
         Self(value)
+    }
+}
+
+impl Into<Vec<u8>> for Blockhash {
+    fn into(self) -> Vec<u8> {
+        self.0
     }
 }
 
