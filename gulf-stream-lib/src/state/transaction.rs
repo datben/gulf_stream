@@ -1,4 +1,5 @@
-use ed25519_dalek::{PublicKey, Signature, Verifier};
+use ed25519_dalek::{Digest, Sha512};
+use ed25519_dalek::{PublicKey, Signature};
 
 pub struct Transaction {
     pub payer: PublicKey,
@@ -8,7 +9,11 @@ pub struct Transaction {
 
 impl Transaction {
     pub fn is_valid(&self) -> bool {
-        // self.payer.verify(&self.msg[..], &self.signature).is_ok()
-        true
+        let mut prehashed: Sha512 = Sha512::new();
+        prehashed.update(&self.msg[..]);
+
+        self.payer
+            .verify_prehashed(prehashed, None, &self.signature)
+            .is_ok()
     }
 }
