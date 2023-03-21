@@ -1,14 +1,17 @@
+use crate::err::GulfStreamError;
 use crate::pb::node_client::NodeClient;
 use crate::pb::node_server::Node;
-use crate::pb::{SendBlockRequest, SendBlockResponse};
+use crate::pb::{GenericResponse, SendBlockRequest, SendTransactionRequest};
 use crate::state::block::Block;
 use crate::state::blockchain::Blockchain;
+use crate::state::transaction::Transaction;
 use tokio::sync::Mutex;
 use tonic::transport::Endpoint;
 use tonic::{Request, Response, Status};
 
 pub struct Ledger {
     pub state: Mutex<Blockchain>,
+    pub mem_pool: Mutex<Vec<Transaction>>,
     pub other_nodes: Mutex<Vec<Endpoint>>,
 }
 
@@ -17,16 +20,35 @@ impl Node for Ledger {
     async fn send_block(
         &self,
         request: Request<SendBlockRequest>,
-    ) -> Result<Response<SendBlockResponse>, Status> {
+    ) -> Result<Response<GenericResponse>, Status> {
         let block: Block = request.into_inner().block.unwrap().into();
 
         if let Err(err) = self.state.lock().await.try_insert(&block) {
             return Err(err.into());
         }
 
-        let reply = SendBlockResponse {
+        let reply = GenericResponse {
             message: format!("Block {} inserted", block.blockhash),
         };
+
+        return Ok(Response::new(reply));
+    }
+
+    async fn send_transaction(
+        &self,
+        request: Request<SendTransactionRequest>,
+    ) -> Result<Response<GenericResponse>, Status> {
+        let tx: Transaction = request.into_inner().tx.unwrap().try_into().unwrap();
+
+        if !tx.is_valid() {
+            return Err(GulfStreamError::TxIsNotValid.into());
+        }
+
+        let reply = GenericResponse {
+            message: format!("Tx {} inserted", tx.signature),
+        };
+
+        self.mem_pool.lock().await.push(tx);
 
         return Ok(Response::new(reply));
     }

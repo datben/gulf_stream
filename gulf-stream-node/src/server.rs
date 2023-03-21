@@ -22,6 +22,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let ledger = Ledger {
         state: Mutex::new(Blockchain::default()),
         other_nodes: Mutex::new(vec![]),
+        mem_pool: Mutex::new(vec![]),
     };
 
     Server::builder()

@@ -2,14 +2,27 @@ syntax = "proto3";
 package pb;
 
 service Node {
-    rpc SendBlock (SendBlockRequest) returns (SendBlockResponse);
+    rpc SendBlock (SendBlockRequest) returns (GenericResponse);
+    rpc SendTransaction (SendTransactionRequest) returns (GenericResponse);
+}
+
+
+
+message Transaction {
+    bytes payer = 1;
+    bytes msg = 2;
+    bytes signature = 3;
 }
 
 message SendBlockRequest {
     Block block = 1;
 }
 
-message SendBlockResponse {
+message SendTransactionRequest {
+    Transaction tx = 1;
+}
+
+message GenericResponse {
     string message = 1;
 }
 
