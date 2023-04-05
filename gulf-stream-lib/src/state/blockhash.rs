@@ -45,4 +45,23 @@ impl Blockhash {
         });
         hasher.finalize().to_vec().into()
     }
+
+    pub fn from_raw_data(
+        index: u64,
+        previous_blockhash: &Blockhash,
+        transactions: &Vec<u8>,
+        nonce: u64,
+    ) -> Blockhash {
+        let mut hasher = Sha256::new();
+        hasher.update(nonce.to_be_bytes());
+        hasher.update(index.to_be_bytes());
+        hasher.update(previous_blockhash);
+        hasher.update(transactions);
+        hasher.finalize().to_vec().into()
+    }
+
+    pub fn is_valid(&self, difficulty: usize) -> bool {
+        let slice = &self.0[0..difficulty];
+        slice.into_iter().any(|value| value.eq(&0))
+    }
 }
