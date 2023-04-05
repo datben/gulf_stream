@@ -1,3 +1,5 @@
+use std::vec;
+
 use gulf_stream_lib::{
     pb::{node_client::NodeClient, SendBlockRequest, SendTransactionRequest},
     state::{block::Block, transaction::Transaction},
@@ -12,7 +14,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let genesis = Block::genesis();
 
-    let block1 = Block::create_block(1, &genesis.blockhash, 0);
+    let block1 = Block::create_block(1, &genesis.blockhash, vec![], 0);
 
     let request = tonic::Request::new(SendBlockRequest {
         block: Some(block1.into()),

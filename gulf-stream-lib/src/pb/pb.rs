@@ -2,14 +2,21 @@ use ed25519_dalek::{PublicKey, Signature};
 
 tonic::include_proto!("pb");
 
-impl Into<crate::state::block::Block> for Block {
-    fn into(self) -> crate::state::block::Block {
-        crate::state::block::Block {
+impl TryInto<crate::state::block::Block> for Block {
+    type Error = crate::err::GulfStreamError;
+
+    fn try_into(self) -> Result<crate::state::block::Block, Self::Error> {
+        Ok(crate::state::block::Block {
             index: self.index,
+            transactions: self
+                .transactions
+                .into_iter()
+                .map(TryInto::try_into)
+                .collect::<Result<Vec<crate::state::transaction::Transaction>, Self::Error>>()?,
             blockhash: self.blockhash.into(),
             previous_blockhash: self.previous_blockhash.into(),
             nonce: self.nonce,
-        }
+        })
     }
 }
 
@@ -17,6 +24,7 @@ impl From<crate::state::block::Block> for Block {
     fn from(value: crate::state::block::Block) -> Self {
         Block {
             index: value.index,
+            transactions: value.transactions.into_iter().map(Into::into).collect(),
             blockhash: value.blockhash.into(),
             previous_blockhash: value.previous_blockhash.into(),
             nonce: value.nonce,
