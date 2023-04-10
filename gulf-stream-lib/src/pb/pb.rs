@@ -1,4 +1,6 @@
-use ed25519_dalek::{PublicKey, Signature};
+use ed25519_dalek::Signature;
+
+use crate::state::publick_key::PublicKey;
 
 tonic::include_proto!("pb");
 
@@ -37,8 +39,10 @@ impl TryInto<crate::state::transaction::Transaction> for Transaction {
 
     fn try_into(self) -> Result<crate::state::transaction::Transaction, Self::Error> {
         Ok(crate::state::transaction::Transaction {
-            payer: PublicKey::from_bytes(self.payer.as_ref())
-                .map_err(|_| Self::Error::FailDeserialisationOfTransaction)?,
+            payer: PublicKey(
+                ed25519_dalek::PublicKey::from_bytes(self.payer.as_ref())
+                    .map_err(|_| Self::Error::FailDeserialisationOfTransaction)?,
+            ),
             msg: self.msg,
             signature: Signature::from_bytes(self.signature.as_ref())
                 .map_err(|_| Self::Error::FailDeserialisationOfTransaction)?,
@@ -49,7 +53,7 @@ impl TryInto<crate::state::transaction::Transaction> for Transaction {
 impl From<crate::state::transaction::Transaction> for Transaction {
     fn from(value: crate::state::transaction::Transaction) -> Self {
         Self {
-            payer: value.payer.to_bytes().to_vec(),
+            payer: value.payer.0.to_bytes().to_vec(),
             msg: value.msg,
             signature: value.signature.to_bytes().to_vec(),
         }

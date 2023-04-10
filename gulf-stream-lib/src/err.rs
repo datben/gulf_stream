@@ -14,6 +14,7 @@ pub enum GulfStreamError {
     DidNotFindPreviousBlock,
     FailDeserialisationOfTransaction,
     TxIsNotValid,
+    FailedToDeserialized,
 }
 pub type Result<T> = std::result::Result<T, GulfStreamError>;
 
@@ -49,6 +50,9 @@ impl Into<String> for GulfStreamError {
             }
             GulfStreamError::TxIsNotValid => {
                 format!("GulfStreamError::TxIsNotValid")
+            }
+            GulfStreamError::FailedToDeserialized => {
+                format!("GulfStreamError::FailedToDeserialized")
             }
         }
     }

@@ -2,7 +2,7 @@ use std::vec;
 
 use gulf_stream_lib::{
     pb::{node_client::NodeClient, SendTransactionRequest},
-    state::transaction::Transaction,
+    state::{publick_key::PublicKey, transaction::Transaction},
 };
 
 use ed25519_dalek::{Digest, Keypair, Sha512};
@@ -25,7 +25,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let request = tonic::Request::new(SendTransactionRequest {
         tx: Some(
             Transaction {
-                payer: keypair.public,
+                payer: PublicKey(keypair.public),
                 msg,
                 signature,
             }
