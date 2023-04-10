@@ -1,8 +1,7 @@
 use super::{block::Block, link::Link};
 use crate::err::*;
-use std::sync::Arc;
+use std::{sync::Arc, vec};
 
-#[derive(Default)]
 pub struct Blockchain {
     pub genesis: Arc<Link>,
     pub latest_links: Vec<Arc<Link>>,
@@ -52,5 +51,15 @@ impl Blockchain {
 
     fn is_valid(&self, _block: &Block) -> bool {
         true
+    }
+}
+
+impl Default for Blockchain {
+    fn default() -> Self {
+        let genesis: Arc<Link> = Default::default();
+        Self {
+            latest_links: vec![genesis.clone()],
+            genesis,
+        }
     }
 }

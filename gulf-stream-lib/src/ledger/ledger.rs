@@ -19,7 +19,7 @@ impl BlockBuilder for Ledger {
         previous_blockhash: &Blockhash,
         transactions: Vec<Transaction>,
     ) -> Option<Block> {
-        let can_build_block = self.mem_pool.lock().await.len() > 1;
+        let can_build_block = self.mem_pool.lock().await.len() > 0;
         return if can_build_block {
             let mut nonce = 0;
             let raw_txs = transactions
@@ -33,7 +33,7 @@ impl BlockBuilder for Ledger {
                     &raw_txs,
                     nonce,
                 );
-                if blockhash.is_valid(0) {
+                if blockhash.is_valid(1) {
                     return Some(Block {
                         index: previous_index + 1,
                         blockhash,
@@ -52,7 +52,7 @@ impl BlockBuilder for Ledger {
 }
 
 #[tonic::async_trait]
-trait BlockBuilder {
+pub trait BlockBuilder {
     async fn try_build_block(
         &self,
         previous_index: u64,

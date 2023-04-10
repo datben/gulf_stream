@@ -1,10 +1,8 @@
 use std::sync::Arc;
 
 use gulf_stream_lib::{
-    ledger::ledger::Ledger,
-    pb::node_server::NodeServer,
-    rpc::rpc::GulfStreamRpc,
-    state::{blockchain::Blockchain, link::Link},
+    ledger::ledger::*, pb::node_server::NodeServer, rpc::rpc::GulfStreamRpc,
+    state::blockchain::Blockchain,
 };
 use tokio::sync::Mutex;
 use tonic::transport::Server;
@@ -40,29 +38,57 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .serve(addr)
             .await
     });
-
+    let ledger_printer_pointer = ledger.clone();
     let printer_runtime = tokio::spawn(async move {
         loop {
+            let ledger = ledger_printer_pointer.clone();
             let latest_block = ledger
+                .clone()
                 .state
                 .lock()
                 .await
                 .latest_links
                 .get(0)
-                .unwrap_or(&Arc::new(Link::default()))
+                .unwrap()
                 .block
                 .clone();
             println!(
-                "Ledger latest block : index = {:?}, blockhash = {}",
-                latest_block.index, latest_block.blockhash
+                "Ledger latest block : index = {:?}, blockhash = {}, tx = {}",
+                latest_block.index,
+                latest_block.blockhash,
+                latest_block.transactions.len()
             );
             tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
         }
     });
 
+    let ledger_node_pointer = ledger.clone();
     let node_runtime = tokio::spawn(async move {
         loop {
+            let ledger = ledger_node_pointer.clone();
             tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+            let latest_block = ledger
+                .clone()
+                .state
+                .lock()
+                .await
+                .latest_links
+                .get(0)
+                .unwrap()
+                .block
+                .clone();
+
+            let mempool = ledger.mem_pool.lock().await.clone();
+            if let Some(block) = ledger
+                .clone()
+                .try_build_block(latest_block.index, &latest_block.blockhash, mempool)
+                .await
+            {
+                match ledger.state.lock().await.try_insert(&block) {
+                    Ok(_) => ledger.mem_pool.lock().await.clear(),
+                    Err(err) => println!("{:?}", err),
+                };
+            }
         }
     });
 

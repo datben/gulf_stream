@@ -1,8 +1,8 @@
 use std::vec;
 
 use gulf_stream_lib::{
-    pb::{node_client::NodeClient, SendBlockRequest, SendTransactionRequest},
-    state::{block::Block, transaction::Transaction},
+    pb::{node_client::NodeClient, SendTransactionRequest},
+    state::transaction::Transaction,
 };
 
 use ed25519_dalek::{Digest, Keypair, Sha512};
@@ -11,18 +11,6 @@ use rand::rngs::OsRng;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut client = NodeClient::connect("http://[::1]:50051").await?;
-
-    let genesis = Block::genesis();
-
-    let block1 = Block::create_block(1, &genesis.blockhash, vec![], 0);
-
-    let request = tonic::Request::new(SendBlockRequest {
-        block: Some(block1.into()),
-    });
-
-    let response = client.send_block(request).await?;
-
-    println!("RESPONSE={:?}", response);
     let mut csprng = OsRng {};
     let keypair: Keypair = Keypair::generate(&mut csprng);
 
