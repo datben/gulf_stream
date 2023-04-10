@@ -77,6 +77,6 @@ impl Broadcaster for Ledger {
 }
 
 #[tonic::async_trait]
-trait Broadcaster {
+pub trait Broadcaster {
     async fn broadcast(&self, request: SendBlockRequest) -> Result<(), Vec<Endpoint>>;
 }
