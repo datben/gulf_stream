@@ -1,8 +1,7 @@
 use crate::ed25519::{publickey::PublicKey, signature::Signature};
 use crate::err::Result;
 use crate::utils::serde::{BytesDeserialize, BytesSerialize};
-use ed25519_dalek::{Digest, Keypair, Sha512};
-use rand::rngs::OsRng;
+use ed25519_dalek::{Digest, Sha512};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Transaction {
@@ -22,7 +21,15 @@ impl Transaction {
             .is_ok())
     }
 
-    fn random() -> Self {
+    pub fn get_raw_txs(txs: &Vec<Self>) -> Vec<u8> {
+        txs.iter().flat_map(|tx| tx.serialize()).collect()
+    }
+
+    #[cfg(test)]
+    pub fn random() -> Self {
+        use ed25519_dalek::Keypair;
+        use rand::rngs::OsRng;
+
         let mut csprng = OsRng {};
         let keypair: Keypair = Keypair::generate(&mut csprng);
 
@@ -116,12 +123,6 @@ impl BytesDeserialize for TransactionMessage {
             }
             _ => Err(crate::err::GulfStreamError::Default),
         }
-    }
-}
-
-impl Transaction {
-    pub fn get_raw_txs(txs: &Vec<Self>) -> Vec<u8> {
-        txs.iter().flat_map(|tx| tx.serialize()).collect()
     }
 }
 
