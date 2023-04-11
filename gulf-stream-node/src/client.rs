@@ -1,6 +1,7 @@
 use gulf_stream_lib::{
     pb::{node_client::NodeClient, SendTransactionRequest},
     state::transaction::{Transaction, TransactionMessage},
+    utils::serde::BytesSerialize,
 };
 
 use ed25519_dalek::{Digest, Keypair, Sha512};
@@ -16,7 +17,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut prehashed: Sha512 = Sha512::new();
 
-    prehashed.update(msg.serialize().unwrap());
+    prehashed.update(msg.serialize());
 
     let signature = keypair.sign_prehashed(prehashed, None).unwrap();
 

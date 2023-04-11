@@ -1,45 +1,32 @@
-use serde::de::Visitor;
-use serde::ser::SerializeStruct;
-use serde::{Deserialize, Serialize};
-
+use crate::{
+    err::{GulfStreamError, Result},
+    utils::serde::{BytesDeserialize, BytesSerialize},
+};
+use hex_literal::hex;
 #[derive(Debug, Clone, PartialEq)]
 pub struct Signature(pub ed25519_dalek::Signature);
 
 impl Default for Signature {
     fn default() -> Self {
         Self(
-            ed25519_dalek::Signature::from_bytes(&[
-                228, 156, 243, 186, 38, 251, 212, 144, 41, 101, 11, 216, 197, 222, 175, 108, 195,
-                0, 14, 254, 241, 84, 60, 110, 10, 39, 109, 174, 150, 49, 117, 5, 90, 91, 14, 117,
-                113, 67, 241, 82, 9, 59, 153, 3, 232, 63, 239, 194, 189, 196, 34, 175, 50, 82, 246,
-                91, 78, 192, 60, 209, 115, 28, 159, 137,
-            ])
+            ed25519_dalek::Signature::from_bytes(&hex!("2A80234CCDFA3FC3C8DC7B24394DAB4CF00A63E7F646B49540256192A635FCEE3A7ED14898A1AAC09950BC4F1EAA1569EEA23C33537EA68DF0F41990FF384F08"))
             .unwrap(),
         )
     }
 }
-
-impl<'de> Deserialize<'de> for Signature {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        deserializer.deserialize_tuple_struct(
-            "Signature",
-            ed25519_dalek::Signature::BYTE_SIZE,
-            SignatureVisitor,
-        )
+impl BytesSerialize for Signature {
+    fn serialize(&self) -> Vec<u8> {
+        self.0.to_bytes().to_vec()
     }
 }
 
-impl Serialize for Signature {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        let mut state = serializer.serialize_struct("Signature", 1)?;
-        state.serialize_field("0", &self.0.to_bytes().to_vec())?;
-        state.end()
+impl BytesDeserialize for Signature {
+    fn deserialize(buf: &mut &[u8]) -> Result<Self> {
+        let data = &buf[..ed25519_dalek::SIGNATURE_LENGTH];
+        *buf = &buf[ed25519_dalek::SIGNATURE_LENGTH..];
+        Ok(Self(
+            ed25519_dalek::Signature::from_bytes(data).map_err(|_| GulfStreamError::default())?,
+        ))
     }
 }
 
@@ -55,49 +42,16 @@ impl From<ed25519_dalek::Signature> for Signature {
     }
 }
 
-struct SignatureVisitor;
-
-impl<'de> Visitor<'de> for SignatureVisitor {
-    type Value = Signature;
-
-    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-        formatter.write_str("a Signature")
-    }
-
-    fn visit_bytes<E>(self, value: &[u8]) -> Result<Self::Value, E>
-    where
-        E: serde::de::Error,
-    {
-        Ok(Signature(
-            ed25519_dalek::Signature::from_bytes(value)
-                .map_err(|_| serde::de::Error::custom("Signature deserialization failed"))?,
-        ))
-    }
-
-    fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
-    where
-        A: serde::de::SeqAccess<'de>,
-    {
-        let mut collector = vec![];
-        let mut next: Option<u8> = seq.next_element()?;
-        while next.is_some() {
-            collector.push(next.unwrap());
-            next = seq.next_element()?;
-        }
-        self.visit_bytes(collector.as_slice())
-    }
-}
-
 #[cfg(test)]
 mod test {
 
     use super::*;
 
     #[test]
-    fn se_de_publickey() {
+    fn se_de_signature() {
         let signature = Signature::default();
-        let se = bincode::serialize(&signature).unwrap();
-        let de: Signature = bincode::deserialize(se.as_slice()).unwrap();
+        let se = signature.serialize();
+        let de: Signature = Signature::deserialize(&mut se.as_slice()).unwrap();
         assert_eq!(de, signature);
     }
 }

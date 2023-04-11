@@ -113,29 +113,26 @@ impl BlockBuilder for Ledger {
         let can_build_block = self.mem_pool.lock().await.len() > 0;
         return if can_build_block {
             let mut nonce = 0;
-            if let Ok(raw_txs) = Transaction::try_get_raw_txs(&transactions) {
-                loop {
-                    let blockhash = Blockhash::from_raw_data(
-                        previous_index + 1,
-                        previous_blockhash,
-                        &raw_txs,
+            let raw_txs = Transaction::get_raw_txs(&transactions);
+            loop {
+                let blockhash = Blockhash::from_raw_data(
+                    previous_index + 1,
+                    previous_blockhash,
+                    &raw_txs,
+                    nonce,
+                );
+                if blockhash.is_valid(1) {
+                    return Some(Block {
+                        index: previous_index + 1,
+                        blockhash,
+                        previous_blockhash: previous_blockhash.to_owned(),
+                        transactions,
                         nonce,
-                    );
-                    if blockhash.is_valid(1) {
-                        return Some(Block {
-                            index: previous_index + 1,
-                            blockhash,
-                            previous_blockhash: previous_blockhash.to_owned(),
-                            transactions,
-                            nonce,
-                        });
-                    } else {
-                        nonce += 1;
-                    }
+                    });
+                } else {
+                    nonce += 1;
                 }
-            } else {
-                return None;
-            };
+            }
         } else {
             None
         };

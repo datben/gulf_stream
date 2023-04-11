@@ -1,27 +1,24 @@
-use serde::de::Visitor;
-use serde::ser::SerializeStruct;
-use serde::{Deserialize, Serialize};
+use crate::{
+    err::*,
+    utils::serde::{BytesDeserialize, BytesSerialize},
+};
 
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct PublicKey(pub ed25519_dalek::PublicKey);
 
-impl<'de> Deserialize<'de> for PublicKey {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        deserializer.deserialize_tuple_struct("PublicKey", 32, PublicKeyVisitor)
+impl BytesDeserialize for PublicKey {
+    fn deserialize(buf: &mut &[u8]) -> Result<Self> {
+        let data = &buf[..32];
+        *buf = &buf[32..];
+        Ok(Self(
+            ed25519_dalek::PublicKey::from_bytes(data).map_err(|_| GulfStreamError::default())?,
+        ))
     }
 }
 
-impl Serialize for PublicKey {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        let mut state = serializer.serialize_struct("PublicKey", 1)?;
-        state.serialize_field("0", self.0.as_bytes())?;
-        state.end()
+impl BytesSerialize for PublicKey {
+    fn serialize(&self) -> Vec<u8> {
+        self.0.as_bytes().to_vec()
     }
 }
 
@@ -36,40 +33,6 @@ impl From<ed25519_dalek::PublicKey> for PublicKey {
         Self(value)
     }
 }
-
-struct PublicKeyVisitor;
-
-impl<'de> Visitor<'de> for PublicKeyVisitor {
-    type Value = PublicKey;
-
-    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-        formatter.write_str("a PublicKey")
-    }
-
-    fn visit_bytes<E>(self, value: &[u8]) -> Result<Self::Value, E>
-    where
-        E: serde::de::Error,
-    {
-        Ok(PublicKey(
-            ed25519_dalek::PublicKey::from_bytes(value)
-                .map_err(|_| serde::de::Error::custom("Publickey deserialization failed"))?,
-        ))
-    }
-
-    fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
-    where
-        A: serde::de::SeqAccess<'de>,
-    {
-        let mut collector = vec![];
-        let mut next: Option<u8> = seq.next_element()?;
-        while next.is_some() {
-            collector.push(next.unwrap());
-            next = seq.next_element()?;
-        }
-        self.visit_bytes(collector.as_slice())
-    }
-}
-
 #[cfg(test)]
 mod test {
 
@@ -78,8 +41,8 @@ mod test {
     #[test]
     fn se_de_publickey() {
         let pk = PublicKey::default();
-        let se = bincode::serialize(&pk).unwrap();
-        let de: PublicKey = bincode::deserialize(se.as_slice()).unwrap();
+        let se = pk.serialize();
+        let de: PublicKey = PublicKey::deserialize(&mut se.as_slice()).unwrap();
         assert_eq!(de, pk);
     }
 }

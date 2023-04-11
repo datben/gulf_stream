@@ -59,9 +59,3 @@ impl Into<Status> for GulfStreamError {
         Status::aborted(self)
     }
 }
-
-impl From<bincode::Error> for GulfStreamError {
-    fn from(value: bincode::Error) -> Self {
-        Self::Default
-    }
-}
