@@ -39,12 +39,12 @@ impl Node for GulfStreamRpc {
     ) -> Result<Response<GenericResponse>, Status> {
         let tx: Transaction = request.into_inner().tx.unwrap().try_into().unwrap();
 
-        if !tx.is_valid() {
+        if !tx.is_valid().map_err(Into::<Status>::into)? {
             return Err(GulfStreamError::TxIsNotValid.into());
         }
 
         let reply = GenericResponse {
-            message: format!("Tx {} inserted", tx.signature),
+            message: format!("Tx {:?} inserted", tx.signature),
         };
 
         self.ledger.mem_pool.lock().await.push(tx);

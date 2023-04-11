@@ -1,3 +1,4 @@
+pub mod ed25519;
 pub mod err;
 pub mod ledger;
 pub mod pb;

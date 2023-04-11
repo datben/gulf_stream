@@ -88,7 +88,7 @@ impl Ledger {
 
                     match ledger
                         .broadcast(SendBlockRequest {
-                            block: Some(block.into()),
+                            block: Some(block.try_into().unwrap()),
                         })
                         .await
                     {
@@ -113,29 +113,29 @@ impl BlockBuilder for Ledger {
         let can_build_block = self.mem_pool.lock().await.len() > 0;
         return if can_build_block {
             let mut nonce = 0;
-            let raw_txs = transactions
-                .iter()
-                .flat_map(|tx| Into::<Vec<u8>>::into(tx.to_owned()))
-                .collect::<Vec<u8>>();
-            loop {
-                let blockhash = Blockhash::from_raw_data(
-                    previous_index + 1,
-                    previous_blockhash,
-                    &raw_txs,
-                    nonce,
-                );
-                if blockhash.is_valid(1) {
-                    return Some(Block {
-                        index: previous_index + 1,
-                        blockhash,
-                        previous_blockhash: previous_blockhash.to_owned(),
-                        transactions,
+            if let Ok(raw_txs) = Transaction::try_get_raw_txs(&transactions) {
+                loop {
+                    let blockhash = Blockhash::from_raw_data(
+                        previous_index + 1,
+                        previous_blockhash,
+                        &raw_txs,
                         nonce,
-                    });
-                } else {
-                    nonce += 1;
+                    );
+                    if blockhash.is_valid(1) {
+                        return Some(Block {
+                            index: previous_index + 1,
+                            blockhash,
+                            previous_blockhash: previous_blockhash.to_owned(),
+                            transactions,
+                            nonce,
+                        });
+                    } else {
+                        nonce += 1;
+                    }
                 }
-            }
+            } else {
+                return None;
+            };
         } else {
             None
         };

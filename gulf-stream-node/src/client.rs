@@ -1,8 +1,6 @@
-use std::vec;
-
 use gulf_stream_lib::{
     pb::{node_client::NodeClient, SendTransactionRequest},
-    state::{publickey::PublicKey, transaction::Transaction},
+    state::transaction::{Transaction, TransactionMessage},
 };
 
 use ed25519_dalek::{Digest, Keypair, Sha512};
@@ -14,22 +12,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut csprng = OsRng {};
     let keypair: Keypair = Keypair::generate(&mut csprng);
 
-    let msg = vec![0, 1, 2, 3, 4, 5];
+    let msg = TransactionMessage::default();
 
     let mut prehashed: Sha512 = Sha512::new();
 
-    prehashed.update(msg.to_owned());
+    prehashed.update(msg.serialize().unwrap());
 
     let signature = keypair.sign_prehashed(prehashed, None).unwrap();
 
     let request = tonic::Request::new(SendTransactionRequest {
         tx: Some(
             Transaction {
-                payer: PublicKey(keypair.public),
+                payer: keypair.public.into(),
                 msg,
-                signature,
+                signature: signature.into(),
             }
-            .into(),
+            .try_into()
+            .unwrap(),
         ),
     });
 

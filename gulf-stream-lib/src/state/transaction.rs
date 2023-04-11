@@ -1,39 +1,70 @@
-use ed25519_dalek::Signature;
+use crate::ed25519::{publickey::PublicKey, signature::Signature};
+use crate::err::Result;
 use ed25519_dalek::{Digest, Sha512};
 use serde::{Deserialize, Serialize};
 
-use super::publickey::PublicKey;
-
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Transaction {
     pub payer: PublicKey,
-    pub msg: Vec<u8>,
+    pub msg: TransactionMessage,
     pub signature: Signature,
 }
 
-impl Into<Vec<u8>> for Transaction {
-    fn into(self) -> Vec<u8> {
-        let mut vec = vec![];
-        vec.extend(self.payer.0.as_bytes());
-        vec.extend(self.msg);
-        vec.extend(self.signature.to_bytes());
-        vec
+impl Transaction {
+    pub fn is_valid(&self) -> Result<bool> {
+        let mut prehashed: Sha512 = Sha512::new();
+        prehashed.update(&bincode::serialize(&self.msg)?[..]);
+        Ok(self
+            .payer
+            .0
+            .verify_prehashed(prehashed, None, &self.signature.0)
+            .is_ok())
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub enum TransactionMessage {
+    Mint { amount: u64 },
+    Transfer { to: PublicKey, amount: u64 },
+}
+
+impl Default for TransactionMessage {
+    fn default() -> Self {
+        Self::Transfer {
+            to: PublicKey::default(),
+            amount: 77,
+        }
+    }
+}
+
+impl TransactionMessage {
+    pub fn serialize(&self) -> Result<Vec<u8>> {
+        bincode::serialize(self).map_err(Into::into)
     }
 }
 
 impl Transaction {
-    pub fn is_valid(&self) -> bool {
-        let mut prehashed: Sha512 = Sha512::new();
-        prehashed.update(&self.msg[..]);
-        self.payer
-            .0
-            .verify_prehashed(prehashed, None, &self.signature)
-            .is_ok()
+    pub fn try_get_raw_txs(txs: &Vec<Self>) -> Result<Vec<u8>> {
+        Ok(txs
+            .iter()
+            .map(|tx| bincode::serialize(&tx).map_err(Into::into))
+            .collect::<Result<Vec<Vec<u8>>>>()?
+            .into_iter()
+            .flatten()
+            .collect())
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-pub enum TransactionMessage {
-    Mint { amount: u64 },
-    Transfer { to: PublicKey, amount: u64 },
+#[cfg(test)]
+mod test {
+
+    use super::*;
+
+    #[test]
+    fn se_de_tx() {
+        let tx = TransactionMessage::default();
+        let se = bincode::serialize(&tx).unwrap();
+        let de: TransactionMessage = bincode::deserialize(se.as_slice()).unwrap();
+        assert_eq!(de, tx);
+    }
 }

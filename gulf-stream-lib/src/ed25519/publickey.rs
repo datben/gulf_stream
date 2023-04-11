@@ -5,39 +5,6 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct PublicKey(pub ed25519_dalek::PublicKey);
 
-pub struct PublicKeyVisitor;
-
-impl<'de> Visitor<'de> for PublicKeyVisitor {
-    type Value = PublicKey;
-
-    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-        formatter.write_str("a PublicKey")
-    }
-
-    fn visit_bytes<E>(self, value: &[u8]) -> Result<Self::Value, E>
-    where
-        E: serde::de::Error,
-    {
-        Ok(PublicKey(
-            ed25519_dalek::PublicKey::from_bytes(value)
-                .map_err(|_| serde::de::Error::custom("Publickey deserialization failed"))?,
-        ))
-    }
-
-    fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
-    where
-        A: serde::de::SeqAccess<'de>,
-    {
-        let mut collector = vec![];
-        let mut next: Option<u8> = seq.next_element()?;
-        while next.is_some() {
-            collector.push(next.unwrap());
-            next = seq.next_element()?;
-        }
-        self.visit_bytes(collector.as_slice())
-    }
-}
-
 impl<'de> Deserialize<'de> for PublicKey {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -67,6 +34,39 @@ impl Into<ed25519_dalek::PublicKey> for PublicKey {
 impl From<ed25519_dalek::PublicKey> for PublicKey {
     fn from(value: ed25519_dalek::PublicKey) -> Self {
         Self(value)
+    }
+}
+
+struct PublicKeyVisitor;
+
+impl<'de> Visitor<'de> for PublicKeyVisitor {
+    type Value = PublicKey;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        formatter.write_str("a PublicKey")
+    }
+
+    fn visit_bytes<E>(self, value: &[u8]) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        Ok(PublicKey(
+            ed25519_dalek::PublicKey::from_bytes(value)
+                .map_err(|_| serde::de::Error::custom("Publickey deserialization failed"))?,
+        ))
+    }
+
+    fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+    where
+        A: serde::de::SeqAccess<'de>,
+    {
+        let mut collector = vec![];
+        let mut next: Option<u8> = seq.next_element()?;
+        while next.is_some() {
+            collector.push(next.unwrap());
+            next = seq.next_element()?;
+        }
+        self.visit_bytes(collector.as_slice())
     }
 }
 
