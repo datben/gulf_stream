@@ -2,7 +2,7 @@ use ed25519_dalek::Signature;
 use ed25519_dalek::{Digest, Sha512};
 use serde::{Deserialize, Serialize};
 
-use super::publick_key::PublicKey;
+use super::publickey::PublicKey;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Transaction {

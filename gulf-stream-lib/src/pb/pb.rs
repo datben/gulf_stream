@@ -1,6 +1,6 @@
 use ed25519_dalek::Signature;
 
-use crate::state::publick_key::PublicKey;
+use crate::state::publickey::PublicKey;
 
 tonic::include_proto!("pb");
 

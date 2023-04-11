@@ -2,7 +2,7 @@ use std::vec;
 
 use gulf_stream_lib::{
     pb::{node_client::NodeClient, SendTransactionRequest},
-    state::{publick_key::PublicKey, transaction::Transaction},
+    state::{publickey::PublicKey, transaction::Transaction},
 };
 
 use ed25519_dalek::{Digest, Keypair, Sha512};
