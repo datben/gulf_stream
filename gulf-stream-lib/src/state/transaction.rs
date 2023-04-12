@@ -10,10 +10,11 @@ use super::block::TransactionState;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Transaction {
-    pub payer: PublicKey,
-    pub msg: TransactionMessage,
-    pub signature: Signature,
+    pub blockheight: u64,
     pub gas: u64,
+    pub msg: TransactionMessage,
+    pub payer: PublicKey,
+    pub signature: Signature,
 }
 
 impl Transaction {
@@ -32,6 +33,13 @@ impl Transaction {
             TransactionMessage::Transfer { to, amount } if to.ne(pk) => BalanceDelta::Neg(*amount),
             _ => Default::default(),
         }
+    }
+    pub fn serialize_content(&self) -> Vec<u8> {
+        let mut vec = vec![];
+        vec.extend(self.blockheight.serialize());
+        vec.extend(self.gas.serialize());
+        vec.extend(self.msg.serialize());
+        vec
     }
 
     fn sign_is_valid(&self) -> bool {
@@ -62,7 +70,7 @@ impl Transaction {
     }
 
     #[cfg(test)]
-    pub fn random() -> Self {
+    pub fn random(blockheight: u64) -> Self {
         use ed25519_dalek::Keypair;
         use rand::rngs::OsRng;
 
@@ -82,6 +90,7 @@ impl Transaction {
             msg,
             signature: signature.into(),
             gas: 50,
+            blockheight,
         }
     }
 }
@@ -95,10 +104,9 @@ impl Into<TransactionState> for Transaction {
 impl BytesSerialize for Transaction {
     fn serialize(&self) -> Vec<u8> {
         let mut vec = vec![];
+        vec.extend(self.serialize_content());
         vec.extend(self.payer.serialize());
-        vec.extend(self.msg.serialize());
         vec.extend(self.signature.serialize());
-        vec.extend(self.gas.serialize());
         vec
     }
 }
@@ -106,10 +114,11 @@ impl BytesSerialize for Transaction {
 impl BytesDeserialize for Transaction {
     fn deserialize(buf: &mut &[u8]) -> Result<Self> {
         Ok(Self {
-            payer: PublicKey::deserialize(buf)?,
-            msg: TransactionMessage::deserialize(buf)?,
-            signature: Signature::deserialize(buf)?,
+            blockheight: u64::deserialize(buf)?,
             gas: u64::deserialize(buf)?,
+            msg: TransactionMessage::deserialize(buf)?,
+            payer: PublicKey::deserialize(buf)?,
+            signature: Signature::deserialize(buf)?,
         })
     }
 }
@@ -158,10 +167,11 @@ impl BytesDeserialize for TransactionMessage {
                 });
             }
             1 => {
+                println!("here");
                 return Ok(Self::Transfer {
                     to: PublicKey::deserialize(value)?,
                     amount: u64::deserialize(value)?,
-                })
+                });
             }
             _ => Err(crate::err::GulfStreamError::Default),
         }
@@ -235,7 +245,7 @@ mod test {
 
     #[test]
     fn se_de_tx() {
-        let tx = Transaction::random();
+        let tx = Transaction::random(1);
         let se = tx.serialize();
         let de = Transaction::deserialize(&mut se.as_slice()).unwrap();
         assert_eq!(de, tx);

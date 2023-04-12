@@ -42,6 +42,7 @@ impl TryInto<crate::state::transaction::Transaction> for Transaction {
 
     fn try_into(self) -> Result<crate::state::transaction::Transaction, Self::Error> {
         Ok(crate::state::transaction::Transaction {
+            blockheight: self.blockheight,
             payer: PublicKey::deserialize(&mut self.payer.as_ref())?,
             msg: TransactionMessage::deserialize(&mut self.msg.as_ref())?,
             signature: Signature::deserialize(&mut self.signature.as_ref())?,
@@ -53,6 +54,7 @@ impl TryInto<crate::state::transaction::Transaction> for Transaction {
 impl From<crate::state::transaction::Transaction> for Transaction {
     fn from(value: crate::state::transaction::Transaction) -> Self {
         Self {
+            blockheight: value.blockheight,
             payer: value.payer.serialize(),
             msg: value.msg.serialize(),
             signature: value.signature.serialize(),
@@ -120,19 +122,23 @@ impl From<crate::state::block::TransactionState> for TransactionState {
 #[cfg(test)]
 mod test {
 
+    use crate::err;
+
     use super::*;
 
     #[test]
-    fn test() {
+    fn pb_into_tx() {
         let raw_tx = Transaction {
+            blockheight: 5,
             payer: vec![
                 110, 244, 56, 156, 170, 232, 45, 208, 70, 45, 1, 194, 190, 0, 250, 95, 236, 230,
                 83, 70, 255, 253, 51, 219, 174, 30, 197, 82, 243, 235, 57, 228,
             ],
-            msg: vec![
-                1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 77, 0, 0, 0, 0, 0, 0, 0,
-            ],
+            msg: TransactionMessage::Transfer {
+                to: PublicKey::random(),
+                amount: 77,
+            }
+            .serialize(),
             signature: vec![
                 158, 110, 193, 161, 204, 34, 23, 164, 123, 203, 32, 198, 108, 22, 79, 192, 36, 18,
                 136, 124, 181, 99, 169, 163, 180, 80, 254, 220, 173, 142, 18, 237, 54, 3, 16, 169,
@@ -142,8 +148,9 @@ mod test {
             gas: 65,
         };
 
-        let tx: crate::state::transaction::Transaction = raw_tx.try_into().unwrap();
+        let tx: Result<crate::state::transaction::Transaction, err::GulfStreamError> =
+            raw_tx.try_into();
 
-        println!("{:?}", tx)
+        assert!(tx.is_ok())
     }
 }

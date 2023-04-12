@@ -12,6 +12,7 @@ use crate::{
 use tokio::sync::Mutex;
 use tonic::transport::{Endpoint, Server};
 
+#[derive(Default)]
 pub struct Ledger {
     pub state: Mutex<Blockchain>,
     pub mem_pool: Mutex<Vec<TransactionState>>,
@@ -74,10 +75,9 @@ impl Ledger {
                     .block
                     .clone();
 
-                let mempool = ledger.mem_pool.lock().await.clone();
                 if let Some(block) = ledger
                     .clone()
-                    .try_build_block(latest_block.index, &latest_block.blockhash, mempool)
+                    .try_build_block(latest_block.index, &latest_block.blockhash)
                     .await
                 {
                     match ledger.state.lock().await.try_insert(&block) {
@@ -107,12 +107,21 @@ impl BlockBuilder for Ledger {
         &self,
         previous_index: u64,
         previous_blockhash: &Blockhash,
-        transactions: Vec<TransactionState>,
     ) -> Option<Block> {
         let can_build_block = self.mem_pool.lock().await.len() > 0;
         return if can_build_block {
             let mut nonce = 0;
-            let raw_txs = TransactionState::get_raw_txs(&transactions);
+            let txs = self
+                .mem_pool
+                .lock()
+                .await
+                .clone()
+                .into_iter()
+                .filter(|tx| {
+                    return tx.is_pending() && tx.into_tx().blockheight == previous_index + 1;
+                })
+                .collect();
+            let raw_txs = TransactionState::get_raw_txs(&txs);
             loop {
                 let blockhash = Blockhash::from_raw_data(
                     previous_index + 1,
@@ -125,7 +134,7 @@ impl BlockBuilder for Ledger {
                         index: previous_index + 1,
                         blockhash,
                         previous_blockhash: previous_blockhash.to_owned(),
-                        transactions,
+                        transactions: txs,
                         nonce,
                     });
                 } else {
@@ -136,6 +145,15 @@ impl BlockBuilder for Ledger {
             None
         };
     }
+
+    async fn filter_mempool(&self) {
+        let mut mempool = self.mem_pool.lock().await;
+        *mempool = mempool
+            .clone()
+            .into_iter()
+            .filter(|tx| tx.is_pending())
+            .collect::<Vec<TransactionState>>();
+    }
 }
 
 #[tonic::async_trait]
@@ -144,6 +162,50 @@ pub trait BlockBuilder {
         &self,
         previous_index: u64,
         previous_blockhash: &Blockhash,
-        transactions: Vec<TransactionState>,
     ) -> Option<Block>;
+
+    async fn filter_mempool(&self);
+}
+
+#[cfg(test)]
+mod test {
+
+    use crate::{
+        ed25519::publickey::PublicKey,
+        state::transaction::{Transaction, TransactionMessage},
+    };
+
+    use super::*;
+
+    #[tokio::test]
+    pub async fn filter_mempool() {
+        let pk1 = PublicKey::random();
+        let pk2 = PublicKey::random();
+        let ledger = Ledger::default();
+        ledger.mem_pool.lock().await.extend(vec![
+            Transaction {
+                blockheight: 1,
+                msg: TransactionMessage::Mint { amount: 12 },
+                payer: pk1.to_owned(),
+                signature: Default::default(),
+                gas: 0,
+            }
+            .into_tx_state(),
+            Transaction {
+                blockheight: 1,
+
+                msg: TransactionMessage::Mint { amount: 57 },
+                payer: pk2.to_owned(),
+                signature: Default::default(),
+                gas: 0,
+            }
+            .into_tx_state()
+            .success(),
+        ]);
+
+        ledger.filter_mempool().await;
+
+        assert!(ledger.mem_pool.lock().await.len() == 1);
+        assert!(ledger.mem_pool.lock().await[0].is_pending())
+    }
 }

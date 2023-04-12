@@ -109,4 +109,11 @@ impl<'a> TransactionState {
             TransactionState::Pending(tx) => TransactionState::Success(tx),
         }
     }
+
+    pub fn is_pending(&self) -> bool {
+        match &self {
+            TransactionState::Pending(_) => true,
+            _ => false,
+        }
+    }
 }

@@ -9,10 +9,11 @@ service Node {
 
 
 message Transaction {
-    bytes payer = 1;
-    bytes msg = 2;
-    bytes signature = 3;
-    uint64 gas = 4;
+    uint64 blockheight = 1;
+    uint64 gas = 2;
+    bytes msg = 3;
+    bytes payer = 4;
+    bytes signature = 5;
 }
 
 message TransactionState{

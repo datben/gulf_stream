@@ -21,9 +21,9 @@ impl BytesDeserialize for PublicKey {
     fn deserialize(buf: &mut &[u8]) -> Result<Self> {
         let data = &buf[..32];
         *buf = &buf[32..];
-        Ok(Self(
-            ed25519_dalek::PublicKey::from_bytes(data).map_err(|_| GulfStreamError::default())?,
-        ))
+        Ok(Self(ed25519_dalek::PublicKey::from_bytes(data).map_err(
+            |_| GulfStreamError::SerDeError("Publickey".into()),
+        )?))
     }
 }
 

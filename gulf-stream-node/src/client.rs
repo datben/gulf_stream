@@ -24,6 +24,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let request = tonic::Request::new(SendTransactionRequest {
         tx: Some(
             Transaction {
+                blockheight: 1,
                 payer: keypair.public.into(),
                 msg,
                 signature: signature.into(),

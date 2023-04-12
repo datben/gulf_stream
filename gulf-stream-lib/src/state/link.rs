@@ -105,6 +105,7 @@ mod test {
                 &link.block.blockhash,
                 vec![
                     Transaction {
+                        blockheight: 1,
                         msg: TransactionMessage::Mint { amount: 12 },
                         payer: pk1.to_owned(),
                         signature: Default::default(),
@@ -113,6 +114,8 @@ mod test {
                     .into_tx_state()
                     .success(),
                     Transaction {
+                        blockheight: 1,
+
                         msg: TransactionMessage::Mint { amount: 57 },
                         payer: pk2.to_owned(),
                         signature: Default::default(),
@@ -128,6 +131,7 @@ mod test {
                 2,
                 &block1.blockhash,
                 vec![Transaction {
+                    blockheight: 2,
                     msg: TransactionMessage::Transfer {
                         to: pk2.to_owned(),
                         amount: 5,

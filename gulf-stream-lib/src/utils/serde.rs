@@ -1,4 +1,4 @@
-use crate::err::Result;
+use crate::err::{GulfStreamError, Result};
 
 pub trait BytesDeserialize {
     fn deserialize(buf: &mut &[u8]) -> Result<Self>
@@ -17,7 +17,10 @@ impl BytesDeserialize for u64 {
     {
         let data = &buf[0..8];
         *buf = &buf[8..];
-        return Ok(u64::from_le_bytes(data.try_into().unwrap()));
+        return Ok(u64::from_le_bytes(
+            data.try_into()
+                .map_err(|_| GulfStreamError::SerDeError("u64".into()))?,
+        ));
     }
 }
 
@@ -39,7 +42,7 @@ impl BytesDeserialize for bool {
         } else if data == 0 {
             Ok(false)
         } else {
-            Err(crate::err::GulfStreamError::Default)
+            Err(crate::err::GulfStreamError::SerDeError("bool".into()))
         }
     }
 }

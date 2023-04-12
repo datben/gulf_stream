@@ -25,9 +25,9 @@ impl BytesDeserialize for Signature {
     fn deserialize(buf: &mut &[u8]) -> Result<Self> {
         let data = &buf[..ed25519_dalek::SIGNATURE_LENGTH];
         *buf = &buf[ed25519_dalek::SIGNATURE_LENGTH..];
-        Ok(Self(
-            ed25519_dalek::Signature::from_bytes(data).map_err(|_| GulfStreamError::default())?,
-        ))
+        Ok(Self(ed25519_dalek::Signature::from_bytes(data).map_err(
+            |_| GulfStreamError::SerDeError("Signature".into()),
+        )?))
     }
 }
 
