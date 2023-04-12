@@ -8,6 +8,8 @@ pub struct Blockchain {
 }
 
 impl Blockchain {
+    pub const LASTEST_LINK_LENGTH: usize = 10;
+
     pub fn try_insert(&mut self, block: &Block) -> Result<()> {
         if self.is_valid(block) {
             if let Some((index_to_update, new_link)) =
@@ -35,7 +37,7 @@ impl Blockchain {
                     .try_find_block(&block.previous_blockhash, block.index - 1)
                 {
                     let new_link = previous_link.try_insert(block)?;
-                    if self.latest_links.len() >= 10 {
+                    if self.latest_links.len() >= Self::LASTEST_LINK_LENGTH {
                         self.latest_links.pop();
                     }
                     self.latest_links.insert(0, new_link);

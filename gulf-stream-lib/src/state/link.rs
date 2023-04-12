@@ -1,7 +1,8 @@
-use super::{block::Block, blockhash::Blockhash};
-use crate::err::*;
+use super::{block::Block, blockhash::Blockhash, transaction::BalanceDelta};
+use crate::{ed25519::publickey::PublicKey, err::*};
 use std::{
     fmt::Display,
+    ops::Add,
     sync::{Arc, Mutex},
 };
 
@@ -47,6 +48,16 @@ impl Link {
         };
     }
 
+    pub fn get_balance(&self, pk: &PublicKey) -> BalanceDelta {
+        let current_delta = self.block.get_balance_delta(pk);
+        return if let Some(block_parent) = &self.block_parent {
+            let last_delta = block_parent.clone().get_balance(pk);
+            current_delta.add(last_delta)
+        } else {
+            current_delta
+        };
+    }
+
     fn unsafe_insert(self: Arc<Link>, block: Block) -> Result<Arc<Link>> {
         let new_link = Arc::new(Self {
             block_parent: self.clone().into(),
@@ -71,5 +82,76 @@ impl Display for Link {
                 .map(|link| { return link.block.clone() })
                 .collect::<Vec<Block>>()
         )
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    mod get_balance {
+        use crate::state::transaction::{Transaction, TransactionMessage};
+
+        use super::*;
+
+        #[test]
+        fn casual() {
+            let pk1 = PublicKey::random();
+            let pk2 = PublicKey::random();
+
+            let link = Arc::new(Link::default());
+            let block1 = Block::create_block(
+                1,
+                &link.block.blockhash,
+                vec![
+                    Transaction {
+                        msg: TransactionMessage::Mint { amount: 12 },
+                        payer: pk1.to_owned(),
+                        signature: Default::default(),
+                    },
+                    Transaction {
+                        msg: TransactionMessage::Mint { amount: 57 },
+                        payer: pk2.to_owned(),
+                        signature: Default::default(),
+                    },
+                ],
+                0,
+            );
+
+            let block2 = Block::create_block(
+                2,
+                &block1.blockhash,
+                vec![Transaction {
+                    msg: TransactionMessage::Transfer {
+                        to: pk2.to_owned(),
+                        amount: 5,
+                    },
+                    payer: pk1.to_owned(),
+                    signature: Default::default(),
+                }],
+                0,
+            );
+
+            link.clone().try_insert(&block1).unwrap();
+            link.clone().next_blocks.lock().unwrap()[0]
+                .clone()
+                .try_insert(&block2)
+                .unwrap();
+
+            let balance1 = link
+                .clone()
+                .try_find_block(&block2.blockhash, block2.index)
+                .unwrap()
+                .get_balance(&pk1);
+
+            let balance2 = link
+                .clone()
+                .try_find_block(&block2.blockhash, block2.index)
+                .unwrap()
+                .get_balance(&pk2);
+
+            assert_eq!(balance1, BalanceDelta::Pos(7));
+            assert_eq!(balance2, BalanceDelta::Pos(62));
+        }
     }
 }

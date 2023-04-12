@@ -39,7 +39,7 @@ impl Node for GulfStreamRpc {
     ) -> Result<Response<GenericResponse>, Status> {
         let tx: Transaction = request.into_inner().tx.unwrap().try_into().unwrap();
 
-        if !tx.is_valid().map_err(Into::<Status>::into)? {
+        if !tx.is_valid() {
             return Err(GulfStreamError::TxIsNotValid.into());
         }
 

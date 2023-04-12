@@ -3,6 +3,7 @@ use crate::{
     utils::serde::{BytesDeserialize, BytesSerialize},
 };
 use hex_literal::hex;
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Signature(pub ed25519_dalek::Signature);
 

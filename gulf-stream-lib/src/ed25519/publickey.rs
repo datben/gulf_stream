@@ -6,6 +6,17 @@ use crate::{
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct PublicKey(pub ed25519_dalek::PublicKey);
 
+impl PublicKey {
+    #[cfg(test)]
+    pub fn random() -> Self {
+        use ed25519_dalek::Keypair;
+        use rand::rngs::OsRng;
+        let mut csprng = OsRng {};
+        let keypair: Keypair = Keypair::generate(&mut csprng);
+        return Self(keypair.public);
+    }
+}
+
 impl BytesDeserialize for PublicKey {
     fn deserialize(buf: &mut &[u8]) -> Result<Self> {
         let data = &buf[..32];

@@ -1,4 +1,11 @@
-use super::{blockhash::Blockhash, transaction::Transaction};
+use std::ops::Add;
+
+use crate::ed25519::publickey::PublicKey;
+
+use super::{
+    blockhash::Blockhash,
+    transaction::{BalanceDelta, Transaction},
+};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Block {
@@ -43,6 +50,13 @@ impl Block {
             previous_blockhash,
             nonce: 0,
         }
+    }
+
+    pub fn get_balance_delta(&self, pk: &PublicKey) -> BalanceDelta {
+        self.transactions.iter().fold(
+            BalanceDelta::default(),
+            |res: BalanceDelta, tx: &Transaction| res.add(tx.get_balance_delta(pk)),
+        )
     }
 }
 
