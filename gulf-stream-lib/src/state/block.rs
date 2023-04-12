@@ -1,6 +1,6 @@
 use std::ops::Add;
 
-use crate::ed25519::publickey::PublicKey;
+use crate::{ed25519::publickey::PublicKey, utils::serde::BytesSerialize};
 
 use super::{
     blockhash::Blockhash,
@@ -12,7 +12,7 @@ pub struct Block {
     pub index: u64,
     pub blockhash: Blockhash,
     pub previous_blockhash: Blockhash,
-    pub transactions: Vec<Transaction>,
+    pub transactions: Vec<TransactionState>,
     pub nonce: u64,
 }
 
@@ -20,7 +20,7 @@ impl Block {
     pub fn create_block(
         index: u64,
         previous_blockhash: &Blockhash,
-        transactions: Vec<Transaction>,
+        transactions: Vec<TransactionState>,
         nonce: u64,
     ) -> Self {
         Self {
@@ -55,7 +55,7 @@ impl Block {
     pub fn get_balance_delta(&self, pk: &PublicKey) -> BalanceDelta {
         self.transactions.iter().fold(
             BalanceDelta::default(),
-            |res: BalanceDelta, tx: &Transaction| res.add(tx.get_balance_delta(pk)),
+            |res: BalanceDelta, tx: &TransactionState| res.add(tx.into_tx().get_balance_delta(pk)),
         )
     }
 }
@@ -63,5 +63,50 @@ impl Block {
 impl Default for Block {
     fn default() -> Self {
         Self::genesis()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum TransactionState {
+    Success(Transaction),
+    Fail(Transaction),
+    Pending(Transaction),
+}
+
+impl Into<Transaction> for TransactionState {
+    fn into(self) -> Transaction {
+        match self {
+            TransactionState::Success(tx) => tx,
+            TransactionState::Fail(tx) => tx,
+            TransactionState::Pending(tx) => tx,
+        }
+    }
+}
+
+impl<'a> Into<&'a Transaction> for &'a TransactionState {
+    fn into(self) -> &'a Transaction {
+        match self {
+            TransactionState::Success(tx) => tx,
+            TransactionState::Fail(tx) => tx,
+            TransactionState::Pending(tx) => tx,
+        }
+    }
+}
+
+impl<'a> TransactionState {
+    pub fn into_tx(&'a self) -> &'a Transaction {
+        Into::<&Transaction>::into(self)
+    }
+
+    pub fn get_raw_txs(txs: &Vec<TransactionState>) -> Vec<u8> {
+        txs.iter().flat_map(|tx| tx.into_tx().serialize()).collect()
+    }
+
+    pub fn success(self) -> Self {
+        match self {
+            TransactionState::Success(_) => self,
+            TransactionState::Fail(tx) => TransactionState::Success(tx),
+            TransactionState::Pending(tx) => TransactionState::Success(tx),
+        }
     }
 }

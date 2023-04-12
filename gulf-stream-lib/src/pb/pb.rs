@@ -17,7 +17,7 @@ impl TryInto<crate::state::block::Block> for Block {
                 .transactions
                 .into_iter()
                 .map(TryInto::try_into)
-                .collect::<Result<Vec<crate::state::transaction::Transaction>, Self::Error>>()?,
+                .collect::<Result<Vec<crate::state::block::TransactionState>, Self::Error>>()?,
             blockhash: self.blockhash.into(),
             previous_blockhash: self.previous_blockhash.into(),
             nonce: self.nonce,
@@ -45,6 +45,7 @@ impl TryInto<crate::state::transaction::Transaction> for Transaction {
             payer: PublicKey::deserialize(&mut self.payer.as_ref())?,
             msg: TransactionMessage::deserialize(&mut self.msg.as_ref())?,
             signature: Signature::deserialize(&mut self.signature.as_ref())?,
+            gas: self.gas,
         })
     }
 }
@@ -52,9 +53,66 @@ impl TryInto<crate::state::transaction::Transaction> for Transaction {
 impl From<crate::state::transaction::Transaction> for Transaction {
     fn from(value: crate::state::transaction::Transaction) -> Self {
         Self {
-            payer: value.payer.0.to_bytes().to_vec(),
-            msg: TransactionMessage::serialize(&value.msg),
-            signature: value.signature.0.to_bytes().to_vec(),
+            payer: value.payer.serialize(),
+            msg: value.msg.serialize(),
+            signature: value.signature.serialize(),
+            gas: value.gas,
+        }
+    }
+}
+
+impl TryInto<crate::state::block::TransactionState> for TransactionState {
+    type Error = crate::err::GulfStreamError;
+
+    fn try_into(self) -> Result<crate::state::block::TransactionState, Self::Error> {
+        match self.state {
+            0 => self
+                .tx
+                .map(|tx| {
+                    tx.try_into()
+                        .map(|tx| crate::state::block::TransactionState::Success(tx))
+                        .ok()
+                })
+                .ok_or(Self::Error::default())?
+                .ok_or(Self::Error::default()),
+            1 => self
+                .tx
+                .map(|tx| {
+                    tx.try_into()
+                        .map(|tx| crate::state::block::TransactionState::Fail(tx))
+                        .ok()
+                })
+                .ok_or(Self::Error::default())?
+                .ok_or(Self::Error::default()),
+            2 => self
+                .tx
+                .map(|tx| {
+                    tx.try_into()
+                        .map(|tx| crate::state::block::TransactionState::Pending(tx))
+                        .ok()
+                })
+                .ok_or(Self::Error::default())?
+                .ok_or(Self::Error::default()),
+            _ => Err(Self::Error::default()),
+        }
+    }
+}
+
+impl From<crate::state::block::TransactionState> for TransactionState {
+    fn from(value: crate::state::block::TransactionState) -> Self {
+        match value {
+            crate::state::block::TransactionState::Success(tx) => TransactionState {
+                state: 0,
+                tx: Some(tx.into()),
+            },
+            crate::state::block::TransactionState::Fail(tx) => TransactionState {
+                state: 1,
+                tx: Some(tx.into()),
+            },
+            crate::state::block::TransactionState::Pending(tx) => TransactionState {
+                state: 2,
+                tx: Some(tx.into()),
+            },
         }
     }
 }
@@ -81,6 +139,7 @@ mod test {
                 21, 103, 55, 115, 199, 117, 130, 100, 97, 24, 39, 153, 125, 7, 132, 139, 67, 104,
                 143, 156, 136, 167, 112, 144, 125, 173, 240, 8,
             ],
+            gas: 65,
         };
 
         let tx: crate::state::transaction::Transaction = raw_tx.try_into().unwrap();

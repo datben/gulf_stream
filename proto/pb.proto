@@ -12,6 +12,12 @@ message Transaction {
     bytes payer = 1;
     bytes msg = 2;
     bytes signature = 3;
+    uint64 gas = 4;
+}
+
+message TransactionState{
+    State state = 1;
+    Transaction tx = 2;
 }
 
 message SendBlockRequest {
@@ -26,11 +32,17 @@ message GenericResponse {
     string message = 1;
 }
 
+enum State{
+    Success = 0;
+    Fail = 1;
+    Pending = 2;
+}
+
 
 message Block {
     uint64 index = 1;
     bytes blockhash = 2;
-    repeated Transaction transactions = 3;
+    repeated TransactionState transactions = 3;
     bytes previous_blockhash = 4;
     uint64 nonce = 5;
 }

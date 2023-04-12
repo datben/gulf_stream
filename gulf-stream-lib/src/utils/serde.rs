@@ -26,3 +26,30 @@ impl BytesSerialize for u64 {
         self.to_le_bytes().to_vec()
     }
 }
+
+impl BytesDeserialize for bool {
+    fn deserialize(buf: &mut &[u8]) -> Result<Self>
+    where
+        Self: Sized,
+    {
+        let data = buf[0];
+        *buf = &buf[1..];
+        if data == 1 {
+            Ok(true)
+        } else if data == 0 {
+            Ok(false)
+        } else {
+            Err(crate::err::GulfStreamError::Default)
+        }
+    }
+}
+
+impl BytesSerialize for bool {
+    fn serialize(&self) -> Vec<u8> {
+        if *self {
+            vec![1]
+        } else {
+            vec![0]
+        }
+    }
+}

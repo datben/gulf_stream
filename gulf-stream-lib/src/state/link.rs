@@ -108,12 +108,18 @@ mod test {
                         msg: TransactionMessage::Mint { amount: 12 },
                         payer: pk1.to_owned(),
                         signature: Default::default(),
-                    },
+                        gas: 0,
+                    }
+                    .into_tx_state()
+                    .success(),
                     Transaction {
                         msg: TransactionMessage::Mint { amount: 57 },
                         payer: pk2.to_owned(),
                         signature: Default::default(),
-                    },
+                        gas: 0,
+                    }
+                    .into_tx_state()
+                    .success(),
                 ],
                 0,
             );
@@ -128,7 +134,10 @@ mod test {
                     },
                     payer: pk1.to_owned(),
                     signature: Default::default(),
-                }],
+                    gas: 0,
+                }
+                .into_tx_state()
+                .success()],
                 0,
             );
 

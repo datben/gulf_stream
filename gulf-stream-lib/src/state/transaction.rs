@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::ops::Add;
 
 use crate::ed25519::{publickey::PublicKey, signature::Signature};
@@ -5,32 +6,19 @@ use crate::err::Result;
 use crate::utils::serde::{BytesDeserialize, BytesSerialize};
 use ed25519_dalek::{Digest, Sha512};
 
+use super::block::TransactionState;
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Transaction {
     pub payer: PublicKey,
     pub msg: TransactionMessage,
     pub signature: Signature,
+    pub gas: u64,
 }
 
 impl Transaction {
-    pub fn sign_is_valid(&self) -> bool {
-        let mut prehashed: Sha512 = Sha512::new();
-        prehashed.update(&TransactionMessage::serialize(&self.msg)[..]);
-        self.payer
-            .0
-            .verify_prehashed(prehashed, None, &self.signature.0)
-            .is_ok()
-    }
-
-    pub fn tx_msg_is_valid(&self) -> bool {
-        match &self.msg {
-            TransactionMessage::Mint { .. } => true,
-            TransactionMessage::Transfer { to, .. } => self.payer.ne(to),
-        }
-    }
-
-    pub fn is_valid(&self) -> bool {
-        self.sign_is_valid() && self.tx_msg_is_valid()
+    pub fn is_valid(&self, payer_balance: u64) -> bool {
+        self.sign_is_valid() && self.tx_msg_is_valid() && self.is_valid_for_payer(payer_balance)
     }
 
     pub fn get_raw_txs(txs: &Vec<Self>) -> Vec<u8> {
@@ -44,6 +32,33 @@ impl Transaction {
             TransactionMessage::Transfer { to, amount } if to.ne(pk) => BalanceDelta::Neg(*amount),
             _ => Default::default(),
         }
+    }
+
+    fn sign_is_valid(&self) -> bool {
+        let mut prehashed: Sha512 = Sha512::new();
+        prehashed.update(&TransactionMessage::serialize(&self.msg)[..]);
+        self.payer
+            .0
+            .verify_prehashed(prehashed, None, &self.signature.0)
+            .is_ok()
+    }
+
+    fn tx_msg_is_valid(&self) -> bool {
+        match &self.msg {
+            TransactionMessage::Mint { .. } => true,
+            TransactionMessage::Transfer { to, .. } => self.payer.ne(to),
+        }
+    }
+
+    fn is_valid_for_payer(&self, payer_balance: u64) -> bool {
+        match &self.msg {
+            TransactionMessage::Mint { .. } => true,
+            TransactionMessage::Transfer { to: _, amount } => payer_balance.ge(amount),
+        }
+    }
+
+    pub fn into_tx_state(self) -> TransactionState {
+        self.into()
     }
 
     #[cfg(test)]
@@ -66,7 +81,14 @@ impl Transaction {
             payer: keypair.public.into(),
             msg,
             signature: signature.into(),
+            gas: 50,
         }
+    }
+}
+
+impl Into<TransactionState> for Transaction {
+    fn into(self) -> TransactionState {
+        TransactionState::Pending(self)
     }
 }
 
@@ -76,19 +98,18 @@ impl BytesSerialize for Transaction {
         vec.extend(self.payer.serialize());
         vec.extend(self.msg.serialize());
         vec.extend(self.signature.serialize());
+        vec.extend(self.gas.serialize());
         vec
     }
 }
 
 impl BytesDeserialize for Transaction {
     fn deserialize(buf: &mut &[u8]) -> Result<Self> {
-        let payer = PublicKey::deserialize(buf)?;
-        let msg = TransactionMessage::deserialize(buf)?;
-        let signature = Signature::deserialize(buf)?;
         Ok(Self {
-            payer,
-            msg,
-            signature,
+            payer: PublicKey::deserialize(buf)?,
+            msg: TransactionMessage::deserialize(buf)?,
+            signature: Signature::deserialize(buf)?,
+            gas: u64::deserialize(buf)?,
         })
     }
 }
@@ -153,9 +174,34 @@ pub enum BalanceDelta {
     Neg(u64),
 }
 
+impl BalanceDelta {
+    pub fn to_u64(self) -> Option<u64> {
+        match self {
+            BalanceDelta::Pos(a) => Some(a),
+            BalanceDelta::Neg(_) => None,
+        }
+    }
+}
+
 impl Default for BalanceDelta {
     fn default() -> Self {
         Self::Pos(0)
+    }
+}
+
+impl PartialOrd for BalanceDelta {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        match (self, other) {
+            (BalanceDelta::Pos(a), BalanceDelta::Pos(b)) => a.partial_cmp(b),
+            (BalanceDelta::Neg(a), BalanceDelta::Neg(b)) => b.partial_cmp(a),
+            (BalanceDelta::Pos(a), BalanceDelta::Neg(b)) if *a != 0 && *b != 0 => {
+                Some(Ordering::Greater)
+            }
+            (BalanceDelta::Neg(a), BalanceDelta::Pos(b)) if *a != 0 && *b != 0 => {
+                Some(Ordering::Less)
+            }
+            _ => Some(Ordering::Equal),
+        }
     }
 }
 

@@ -2,10 +2,9 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 
 use crate::rpc::rpc::GulfStreamRpc;
-use crate::state::block::Block;
+use crate::state::block::{Block, TransactionState};
 use crate::state::blockchain::Blockchain;
 use crate::state::blockhash::Blockhash;
-use crate::state::transaction::Transaction;
 use crate::{
     pb::{node_server::NodeServer, SendBlockRequest},
     rpc::rpc::Broadcaster,
@@ -15,7 +14,7 @@ use tonic::transport::{Endpoint, Server};
 
 pub struct Ledger {
     pub state: Mutex<Blockchain>,
-    pub mem_pool: Mutex<Vec<Transaction>>,
+    pub mem_pool: Mutex<Vec<TransactionState>>,
     pub other_nodes: Mutex<Vec<Endpoint>>,
 }
 
@@ -108,12 +107,12 @@ impl BlockBuilder for Ledger {
         &self,
         previous_index: u64,
         previous_blockhash: &Blockhash,
-        transactions: Vec<Transaction>,
+        transactions: Vec<TransactionState>,
     ) -> Option<Block> {
         let can_build_block = self.mem_pool.lock().await.len() > 0;
         return if can_build_block {
             let mut nonce = 0;
-            let raw_txs = Transaction::get_raw_txs(&transactions);
+            let raw_txs = TransactionState::get_raw_txs(&transactions);
             loop {
                 let blockhash = Blockhash::from_raw_data(
                     previous_index + 1,
@@ -145,6 +144,6 @@ pub trait BlockBuilder {
         &self,
         previous_index: u64,
         previous_blockhash: &Blockhash,
-        transactions: Vec<Transaction>,
+        transactions: Vec<TransactionState>,
     ) -> Option<Block>;
 }

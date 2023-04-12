@@ -27,6 +27,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 payer: keypair.public.into(),
                 msg,
                 signature: signature.into(),
+                gas: 5,
             }
             .try_into()
             .unwrap(),
