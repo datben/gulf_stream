@@ -32,6 +32,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         state: Mutex::new(Blockchain::default()),
         other_nodes,
         mem_pool: Mutex::new(vec![]),
+        transaction_history: Mutex::new(vec![]),
     });
 
     let rpc_runtime = ledger.clone().run_rpc(addr);

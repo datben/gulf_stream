@@ -5,7 +5,7 @@ use crate::ledger::ledger::Ledger;
 use crate::pb::node_client::NodeClient;
 use crate::pb::node_server::Node;
 use crate::pb::{GenericResponse, SendBlockRequest, SendTransactionRequest};
-use crate::state::block::{Block, TransactionState};
+use crate::state::block::Block;
 use crate::state::transaction::Transaction;
 use tonic::transport::Endpoint;
 use tonic::{Request, Response, Status};
@@ -39,7 +39,7 @@ impl Node for GulfStreamRpc {
     ) -> Result<Response<GenericResponse>, Status> {
         let tx: Transaction = request.into_inner().tx.unwrap().try_into().unwrap();
 
-        if !tx.is_valid(400000) {
+        if !(tx.sign_is_valid() && tx.tx_msg_is_valid()) {
             return Err(GulfStreamError::TxIsNotValid.into());
         }
 
@@ -47,11 +47,7 @@ impl Node for GulfStreamRpc {
             message: format!("Tx {:?} inserted", tx.signature),
         };
 
-        self.ledger
-            .mem_pool
-            .lock()
-            .await
-            .push(TransactionState::Pending(tx));
+        self.ledger.mem_pool.lock().await.push(tx);
 
         return Ok(Response::new(reply));
     }

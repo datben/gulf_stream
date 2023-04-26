@@ -1,4 +1,4 @@
-use super::block::TransactionState;
+use super::transaction::Transaction;
 use sha2::{Digest, Sha256};
 
 #[derive(Debug, Default, Clone, PartialEq)]
@@ -32,14 +32,14 @@ impl Blockhash {
     pub fn from_data(
         index: u64,
         previous_blockhash: &Blockhash,
-        transactions: &Vec<TransactionState>,
+        transactions: &Vec<Transaction>,
         nonce: u64,
     ) -> Blockhash {
         let mut hasher = Sha256::new();
         hasher.update(nonce.to_be_bytes());
         hasher.update(index.to_be_bytes());
         hasher.update(previous_blockhash);
-        let raw_txs = TransactionState::get_raw_txs(transactions);
+        let raw_txs = Transaction::get_raw_txs(transactions);
         hasher.update(raw_txs);
         hasher.finalize().to_vec().into()
     }

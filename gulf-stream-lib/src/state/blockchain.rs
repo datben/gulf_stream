@@ -54,6 +54,10 @@ impl Blockchain {
     fn is_valid(&self, _block: &Block) -> bool {
         true
     }
+
+    pub fn get_latest(&self) -> Arc<Link> {
+        self.latest_links[0].clone()
+    }
 }
 
 impl Default for Blockchain {

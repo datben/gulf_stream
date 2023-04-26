@@ -1,6 +1,7 @@
 use super::{block::Block, blockhash::Blockhash, transaction::BalanceDelta};
 use crate::{ed25519::publickey::PublicKey, err::*};
 use std::{
+    collections::HashMap,
     fmt::Display,
     ops::Add,
     sync::{Arc, Mutex},
@@ -49,13 +50,27 @@ impl Link {
     }
 
     pub fn get_balance(&self, pk: &PublicKey) -> BalanceDelta {
-        let current_delta = self.block.get_balance_delta(pk);
+        let current_delta = self
+            .block
+            .get_balance_deltas()
+            .get(&pk)
+            .unwrap_or(&BalanceDelta::default())
+            .clone();
         return if let Some(block_parent) = &self.block_parent {
             let last_delta = block_parent.clone().get_balance(pk);
             current_delta.add(last_delta)
         } else {
             current_delta
         };
+    }
+
+    pub fn get_balances(&self, pks: &Vec<PublicKey>) -> HashMap<PublicKey, BalanceDelta> {
+        let mut balances = HashMap::new();
+        // todo: optimize
+        for pk in pks {
+            balances.insert(pk.clone(), self.get_balance(&pk));
+        }
+        return balances;
     }
 
     fn unsafe_insert(self: Arc<Link>, block: Block) -> Result<Arc<Link>> {
@@ -110,9 +125,7 @@ mod test {
                         payer: pk1.to_owned(),
                         signature: Default::default(),
                         gas: 0,
-                    }
-                    .into_tx_state()
-                    .success(),
+                    },
                     Transaction {
                         blockheight: 1,
 
@@ -120,9 +133,7 @@ mod test {
                         payer: pk2.to_owned(),
                         signature: Default::default(),
                         gas: 0,
-                    }
-                    .into_tx_state()
-                    .success(),
+                    },
                 ],
                 0,
             );
@@ -139,9 +150,7 @@ mod test {
                     payer: pk1.to_owned(),
                     signature: Default::default(),
                     gas: 0,
-                }
-                .into_tx_state()
-                .success()],
+                }],
                 0,
             );
 

@@ -43,7 +43,7 @@ enum State{
 message Block {
     uint64 index = 1;
     bytes blockhash = 2;
-    repeated TransactionState transactions = 3;
+    repeated Transaction transactions = 3;
     bytes previous_blockhash = 4;
     uint64 nonce = 5;
 }

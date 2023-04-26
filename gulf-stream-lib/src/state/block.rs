@@ -1,4 +1,4 @@
-use std::ops::Add;
+use std::collections::HashMap;
 
 use crate::{ed25519::publickey::PublicKey, utils::serde::BytesSerialize};
 
@@ -12,7 +12,7 @@ pub struct Block {
     pub index: u64,
     pub blockhash: Blockhash,
     pub previous_blockhash: Blockhash,
-    pub transactions: Vec<TransactionState>,
+    pub transactions: Vec<Transaction>,
     pub nonce: u64,
 }
 
@@ -20,7 +20,7 @@ impl Block {
     pub fn create_block(
         index: u64,
         previous_blockhash: &Blockhash,
-        transactions: Vec<TransactionState>,
+        transactions: Vec<Transaction>,
         nonce: u64,
     ) -> Self {
         Self {
@@ -52,11 +52,12 @@ impl Block {
         }
     }
 
-    pub fn get_balance_delta(&self, pk: &PublicKey) -> BalanceDelta {
-        self.transactions.iter().fold(
-            BalanceDelta::default(),
-            |res: BalanceDelta, tx: &TransactionState| res.add(tx.into_tx().get_balance_delta(pk)),
-        )
+    pub fn get_balance_deltas(&self) -> HashMap<PublicKey, BalanceDelta> {
+        let mut res = HashMap::new();
+        self.transactions.iter().for_each(|tx: &Transaction| {
+            BalanceDelta::update_table(tx, &mut res);
+        });
+        return res;
     }
 }
 

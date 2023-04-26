@@ -1,4 +1,5 @@
 use std::cmp::Ordering;
+use std::collections::HashMap;
 use std::ops::Add;
 
 use crate::ed25519::{publickey::PublicKey, signature::Signature};
@@ -8,7 +9,7 @@ use ed25519_dalek::{Digest, Sha512};
 
 use super::block::TransactionState;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct Transaction {
     pub blockheight: u64,
     pub gas: u64,
@@ -18,15 +19,41 @@ pub struct Transaction {
 }
 
 impl Transaction {
-    pub fn is_valid(&self, payer_balance: u64) -> bool {
-        self.sign_is_valid() && self.tx_msg_is_valid() && self.is_valid_for_payer(payer_balance)
-    }
-
     pub fn get_raw_txs(txs: &Vec<Self>) -> Vec<u8> {
         txs.iter().flat_map(|tx| tx.serialize()).collect()
     }
 
-    pub fn get_balance_delta(&self, pk: &PublicKey) -> BalanceDelta {
+    pub fn get_balance_deltas_from_txs(txs: &Vec<Self>) -> HashMap<PublicKey, BalanceDelta> {
+        txs.iter().fold(HashMap::new(), |mut res, tx| {
+            BalanceDelta::update_table(tx, &mut res);
+            res
+        })
+    }
+
+    pub fn get_involved_pk_from_txs(txs: &Vec<Self>) -> Vec<PublicKey> {
+        txs.iter().flat_map(|tx| tx.get_involved_pk()).collect()
+    }
+}
+
+impl Transaction {
+    pub fn is_valid(&self, payer_balance: u64) -> bool {
+        self.sign_is_valid() && self.tx_msg_is_valid() && self.is_valid_for_payer(payer_balance)
+    }
+
+    pub fn get_balance_deltas(&self) -> HashMap<PublicKey, BalanceDelta> {
+        let mut res = HashMap::new();
+        BalanceDelta::update_table(self, &mut res);
+        res
+    }
+
+    pub fn get_involved_pk(&self) -> Vec<PublicKey> {
+        match &self.msg {
+            TransactionMessage::Mint { .. } => vec![self.payer.clone()],
+            TransactionMessage::Transfer { to, .. } => vec![self.payer.clone(), to.clone()],
+        }
+    }
+
+    pub fn get_balance_delta_from_pk(&self, pk: &PublicKey) -> BalanceDelta {
         match &self.msg {
             TransactionMessage::Mint { amount } if self.payer.eq(pk) => BalanceDelta::Pos(*amount),
             TransactionMessage::Transfer { to, amount } if to.eq(pk) => BalanceDelta::Pos(*amount),
@@ -42,7 +69,7 @@ impl Transaction {
         vec
     }
 
-    fn sign_is_valid(&self) -> bool {
+    pub fn sign_is_valid(&self) -> bool {
         let mut prehashed: Sha512 = Sha512::new();
         prehashed.update(&TransactionMessage::serialize(&self.msg)[..]);
         self.payer
@@ -51,7 +78,7 @@ impl Transaction {
             .is_ok()
     }
 
-    fn tx_msg_is_valid(&self) -> bool {
+    pub fn tx_msg_is_valid(&self) -> bool {
         match &self.msg {
             TransactionMessage::Mint { .. } => true,
             TransactionMessage::Transfer { to, .. } => self.payer.ne(to),
@@ -60,8 +87,10 @@ impl Transaction {
 
     fn is_valid_for_payer(&self, payer_balance: u64) -> bool {
         match &self.msg {
-            TransactionMessage::Mint { .. } => true,
-            TransactionMessage::Transfer { to: _, amount } => payer_balance.ge(amount),
+            TransactionMessage::Mint { .. } => payer_balance.ge(&self.gas),
+            TransactionMessage::Transfer { to: _, amount } => {
+                payer_balance.ge(&(*amount + self.gas))
+            }
         }
     }
 
@@ -123,6 +152,30 @@ impl BytesDeserialize for Transaction {
     }
 }
 
+impl PartialOrd for Transaction {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.gas.partial_cmp(&other.gas)
+    }
+}
+
+impl PartialEq for Transaction {
+    fn eq(&self, other: &Self) -> bool {
+        self.blockheight == other.blockheight
+            && self.gas == other.gas
+            && self.msg == other.msg
+            && self.payer == other.payer
+            && self.signature == other.signature
+    }
+}
+
+impl Eq for Transaction {}
+
+impl Ord for Transaction {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.gas.cmp(&other.gas)
+    }
+}
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum TransactionMessage {
     Mint { amount: u64 },
@@ -131,10 +184,7 @@ pub enum TransactionMessage {
 
 impl Default for TransactionMessage {
     fn default() -> Self {
-        Self::Transfer {
-            to: PublicKey::default(),
-            amount: 77,
-        }
+        Self::Mint { amount: 77 }
     }
 }
 
@@ -189,6 +239,23 @@ impl BalanceDelta {
         match self {
             BalanceDelta::Pos(a) => Some(a),
             BalanceDelta::Neg(_) => None,
+        }
+    }
+
+    pub fn update_table(tx: &Transaction, table: &mut HashMap<PublicKey, BalanceDelta>) {
+        let involved_pks = tx.get_involved_pk();
+        involved_pks.iter().for_each(|pk| {
+            table
+                .entry(pk.clone())
+                .and_modify(|e: &mut BalanceDelta| *e = e.add(tx.get_balance_delta_from_pk(pk)))
+                .or_insert(tx.get_balance_delta_from_pk(pk));
+        });
+    }
+
+    pub fn is_positive_or_nil(&self) -> bool {
+        match self {
+            BalanceDelta::Pos(_) => true,
+            BalanceDelta::Neg(a) => 0.eq(a),
         }
     }
 }

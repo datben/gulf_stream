@@ -17,7 +17,7 @@ impl TryInto<crate::state::block::Block> for Block {
                 .transactions
                 .into_iter()
                 .map(TryInto::try_into)
-                .collect::<Result<Vec<crate::state::block::TransactionState>, Self::Error>>()?,
+                .collect::<Result<Vec<crate::state::transaction::Transaction>, Self::Error>>()?,
             blockhash: self.blockhash.into(),
             previous_blockhash: self.previous_blockhash.into(),
             nonce: self.nonce,

@@ -15,24 +15,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let msg = TransactionMessage::default();
 
-    let mut prehashed: Sha512 = Sha512::new();
+    let request = tonic::Request::new(SendTransactionRequest {
+        tx: Some(sign_tx(&keypair, msg, 1, 5).try_into().unwrap()),
+    });
 
-    prehashed.update(msg.serialize());
+    let response = client.send_transaction(request).await?;
 
-    let signature = keypair.sign_prehashed(prehashed, None).unwrap();
+    println!("RESPONSE={:?}", response);
+
+    let msg = TransactionMessage::default();
 
     let request = tonic::Request::new(SendTransactionRequest {
-        tx: Some(
-            Transaction {
-                blockheight: 1,
-                payer: keypair.public.into(),
-                msg,
-                signature: signature.into(),
-                gas: 5,
-            }
-            .try_into()
-            .unwrap(),
-        ),
+        tx: Some(sign_tx(&keypair, msg, 2, 12546654154).try_into().unwrap()),
     });
 
     let response = client.send_transaction(request).await?;
@@ -40,4 +34,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("RESPONSE={:?}", response);
 
     Ok(())
+}
+
+pub fn sign_tx(
+    keypair: &Keypair,
+    msg: TransactionMessage,
+    blockheight: u64,
+    gas: u64,
+) -> Transaction {
+    let mut prehashed: Sha512 = Sha512::new();
+
+    prehashed.update(msg.serialize());
+
+    let signature = keypair.sign_prehashed(prehashed, None).unwrap();
+
+    Transaction {
+        blockheight,
+        payer: keypair.public.into(),
+        msg,
+        signature: signature.into(),
+        gas,
+    }
 }
