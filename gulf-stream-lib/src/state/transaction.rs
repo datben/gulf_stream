@@ -54,11 +54,16 @@ impl Transaction {
     }
 
     pub fn get_balance_delta_from_pk(&self, pk: &PublicKey) -> BalanceDelta {
-        match &self.msg {
+        let raw_delta = match &self.msg {
             TransactionMessage::Mint { amount } if self.payer.eq(pk) => BalanceDelta::Pos(*amount),
             TransactionMessage::Transfer { to, amount } if to.eq(pk) => BalanceDelta::Pos(*amount),
             TransactionMessage::Transfer { to, amount } if to.ne(pk) => BalanceDelta::Neg(*amount),
             _ => Default::default(),
+        };
+        if self.payer.eq(pk) {
+            raw_delta.add(BalanceDelta::Neg(self.gas))
+        } else {
+            raw_delta
         }
     }
     pub fn serialize_content(&self) -> Vec<u8> {
@@ -71,7 +76,9 @@ impl Transaction {
 
     pub fn sign_is_valid(&self) -> bool {
         let mut prehashed: Sha512 = Sha512::new();
-        prehashed.update(&TransactionMessage::serialize(&self.msg)[..]);
+        prehashed.update(self.blockheight.serialize());
+        prehashed.update(self.gas.serialize());
+        prehashed.update(self.msg.serialize());
         self.payer
             .0
             .verify_prehashed(prehashed, None, &self.signature.0)

@@ -88,12 +88,7 @@ impl Ledger {
                     .try_build_block(latest_block.index, &latest_block.blockhash)
                     .await
                 {
-                    match ledger.state.lock().await.try_insert(&block) {
-                        Ok(_) => ledger.mem_pool.lock().await.clear(),
-                        Err(err) => println!("{:?}", err),
-                    };
-
-                    match ledger
+                    match self
                         .broadcast(SendBlockRequest {
                             block: Some(block.try_into().unwrap()),
                         })
@@ -139,9 +134,9 @@ impl BlockBuilder for Ledger {
             let mut balance_deltas = state.get_latest().get_balances(&involved_pk);
 
             let mut valid_txs: Vec<Transaction> = vec![];
-            let mut unvalid_txs: Vec<Transaction> = vec![];
+            let mut valid_index: Vec<usize> = vec![];
 
-            txs.into_iter().for_each(|tx| {
+            txs.into_iter().enumerate().for_each(|(index, tx)| {
                 let tx_balance_deltas = tx.get_balance_deltas();
                 tx_balance_deltas.iter().for_each(|(pk, delta)| {
                     if let Some(balance_delta) = balance_deltas.get_mut(pk) {
@@ -149,14 +144,17 @@ impl BlockBuilder for Ledger {
                         if delta_if_executed.is_positive_or_nil() {
                             *balance_delta = delta_if_executed;
                             valid_txs.push(tx.clone());
-                        } else {
-                            unvalid_txs.push(tx.clone());
+                            valid_index.push(index);
                         }
                     } else {
                         balance_deltas.insert(pk.to_owned(), delta.to_owned());
                     }
                 });
             });
+
+            if valid_txs.is_empty() {
+                return None;
+            }
 
             let raw_txs = Transaction::get_raw_txs(&valid_txs);
             loop {
@@ -167,13 +165,32 @@ impl BlockBuilder for Ledger {
                     nonce,
                 );
                 if blockhash.is_valid(1) {
-                    return Some(Block {
+                    let block = Block {
                         index: previous_index + 1,
                         blockhash,
                         previous_blockhash: previous_blockhash.to_owned(),
-                        transactions: valid_txs,
+                        transactions: valid_txs.clone(),
                         nonce,
-                    });
+                    };
+
+                    return match self.state.lock().await.try_insert(&block) {
+                        Ok(_) => {
+                            {
+                                let mut mempool_guard = self.mem_pool.lock().await;
+                                valid_index.iter().rev().for_each(|index| {
+                                    mempool_guard.swap_remove(*index);
+                                });
+                            }
+                            {
+                                let mut history_guard = self.transaction_history.lock().await;
+                                valid_txs.iter().for_each(|tx| {
+                                    history_guard.push(TransactionState::Success(tx.clone()));
+                                });
+                            }
+                            Some(block)
+                        }
+                        Err(_) => None,
+                    };
                 } else {
                     nonce += 1;
                 }

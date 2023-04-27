@@ -1,11 +1,35 @@
 use crate::{
     err::{GulfStreamError, Result},
+    state::transaction::{Transaction, TransactionMessage},
     utils::serde::{BytesDeserialize, BytesSerialize},
 };
+use ed25519_dalek::{Digest, Keypair, Sha512};
 use hex_literal::hex;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Signature(pub ed25519_dalek::Signature);
+
+impl Signature {
+    pub fn sign_payload(
+        signer: &Keypair,
+        blockheight: u64,
+        gas: u64,
+        msg: TransactionMessage,
+    ) -> Transaction {
+        let mut prehashed: Sha512 = Sha512::new();
+        prehashed.update(blockheight.serialize());
+        prehashed.update(gas.serialize());
+        prehashed.update(msg.serialize());
+        let signature = signer.sign_prehashed(prehashed, None).unwrap();
+        Transaction {
+            blockheight,
+            payer: signer.public.into(),
+            msg,
+            signature: signature.into(),
+            gas,
+        }
+    }
+}
 
 impl Default for Signature {
     fn default() -> Self {
@@ -15,6 +39,7 @@ impl Default for Signature {
         )
     }
 }
+
 impl BytesSerialize for Signature {
     fn serialize(&self) -> Vec<u8> {
         self.0.to_bytes().to_vec()
