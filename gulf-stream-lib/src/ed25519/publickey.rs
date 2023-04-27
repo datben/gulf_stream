@@ -13,6 +13,13 @@ impl PublicKey {
         Into::<String>::into(self)
     }
 
+    pub fn try_from_str(s: &str) -> Result<Self> {
+        let bytes = bs58::decode(s)
+            .into_vec()
+            .map_err(|_| GulfStreamError::SerDeError("Publickey".into()))?;
+        Self::deserialize(&mut &bytes[..])
+    }
+
     #[cfg(test)]
     pub fn random() -> Self {
         use ed25519_dalek::Keypair;

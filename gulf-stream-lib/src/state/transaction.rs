@@ -66,6 +66,15 @@ impl Transaction {
             raw_delta
         }
     }
+
+    pub fn format(&self) -> String {
+        format!(
+            "tx : {}, payer : {}",
+            self.signature.into_string(),
+            self.payer.into_string()
+        )
+    }
+
     pub fn serialize_content(&self) -> Vec<u8> {
         let mut vec = vec![];
         vec.extend(self.blockheight.serialize());

@@ -1,12 +1,17 @@
 use std::sync::Arc;
 
+use crate::ed25519::publickey::PublicKey;
 use crate::err::GulfStreamError;
-use crate::ledger::ledger::Ledger;
+use crate::ledger::ledger::{Explorer, Ledger};
 use crate::pb::node_client::NodeClient;
 use crate::pb::node_server::Node;
-use crate::pb::{GenericResponse, SendBlockRequest, SendTransactionRequest};
+use crate::pb::{
+    GenericResponse, GetBalanceRequest, GetBalanceResponse, GetHistoryRequest, SendBlockRequest,
+    SendTransactionRequest, TransactionHistory,
+};
 use crate::state::block::Block;
 use crate::state::transaction::Transaction;
+use crate::utils::serde::BytesDeserialize;
 use tonic::transport::Endpoint;
 use tonic::{Request, Response, Status};
 
@@ -49,6 +54,35 @@ impl Node for GulfStreamRpc {
 
         self.ledger.mem_pool.lock().await.push(tx);
 
+        return Ok(Response::new(reply));
+    }
+
+    async fn get_history(
+        &self,
+        _request: Request<GetHistoryRequest>,
+    ) -> Result<Response<TransactionHistory>, Status> {
+        let history = self.ledger.get_transaction_history().await;
+        let reply = TransactionHistory {
+            transactions: history
+                .into_iter()
+                .map(TryInto::try_into)
+                .collect::<Result<_, _>>()
+                .unwrap(),
+        };
+        return Ok(Response::new(reply));
+    }
+
+    async fn get_balance(
+        &self,
+        request: Request<GetBalanceRequest>,
+    ) -> Result<Response<GetBalanceResponse>, Status> {
+        let balance =
+            self.ledger.state.lock().await.get_latest().get_balance(
+                &PublicKey::deserialize(&mut &request.into_inner().address[..]).unwrap(),
+            );
+        let reply = GetBalanceResponse {
+            balance: balance.to_u64().unwrap(),
+        };
         return Ok(Response::new(reply));
     }
 }

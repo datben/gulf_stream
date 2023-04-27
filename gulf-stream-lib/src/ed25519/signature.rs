@@ -10,6 +10,10 @@ use hex_literal::hex;
 pub struct Signature(pub ed25519_dalek::Signature);
 
 impl Signature {
+    pub fn into_string(&self) -> String {
+        Into::<String>::into(self)
+    }
+
     pub fn sign_payload(
         signer: &Keypair,
         blockheight: u64,
@@ -28,6 +32,12 @@ impl Signature {
             signature: signature.into(),
             gas,
         }
+    }
+}
+
+impl Into<String> for &Signature {
+    fn into(self) -> String {
+        bs58::encode(self.0.to_bytes()).into_string()
     }
 }
 

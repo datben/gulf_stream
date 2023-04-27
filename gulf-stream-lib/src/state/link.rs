@@ -1,4 +1,8 @@
-use super::{block::Block, blockhash::Blockhash, transaction::BalanceDelta};
+use super::{
+    block::Block,
+    blockhash::Blockhash,
+    transaction::{BalanceDelta, Transaction},
+};
 use crate::{ed25519::publickey::PublicKey, err::*};
 use std::{
     collections::HashMap,
@@ -81,6 +85,20 @@ impl Link {
         });
         self.next_blocks.try_lock()?.push(new_link.clone());
         return Ok(new_link);
+    }
+
+    pub fn get_transaction_history(self: Arc<Link>) -> Vec<Transaction> {
+        let mut history = vec![];
+        let mut current_link = self;
+        loop {
+            history.extend(current_link.block.transactions.clone());
+            if let Some(block_parent) = &current_link.block_parent {
+                current_link = block_parent.clone();
+            } else {
+                break;
+            }
+        }
+        return history;
     }
 }
 

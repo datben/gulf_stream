@@ -4,9 +4,24 @@ package pb;
 service Node {
     rpc SendBlock (SendBlockRequest) returns (GenericResponse);
     rpc SendTransaction (SendTransactionRequest) returns (GenericResponse);
+    rpc GetHistory (GetHistoryRequest) returns (TransactionHistory);
+    rpc GetBalance (GetBalanceRequest) returns (GetBalanceResponse);
 }
 
+message GetBalanceRequest {
+    bytes address = 1;
+}
 
+message GetBalanceResponse{
+    uint64 balance = 1;
+}
+
+message GetHistoryRequest {    
+}
+
+message TransactionHistory{
+    repeated Transaction transactions = 1;
+}
 
 message Transaction {
     uint64 blockheight = 1;

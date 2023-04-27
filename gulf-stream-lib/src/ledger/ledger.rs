@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use crate::ed25519::publickey::PublicKey;
 use crate::rpc::rpc::GulfStreamRpc;
-use crate::state::block::{Block, TransactionState};
+use crate::state::block::Block;
 use crate::state::blockchain::Blockchain;
 use crate::state::blockhash::Blockhash;
 use crate::state::transaction::Transaction;
@@ -19,7 +19,6 @@ use tonic::transport::{Endpoint, Server};
 pub struct Ledger {
     pub state: Mutex<Blockchain>,
     pub mem_pool: Mutex<Vec<Transaction>>,
-    pub transaction_history: Mutex<Vec<TransactionState>>,
     pub other_nodes: Mutex<Vec<Endpoint>>,
 }
 
@@ -129,9 +128,12 @@ impl BlockBuilder for Ledger {
 
             let involved_pk: Vec<PublicKey> = Transaction::get_involved_pk_from_txs(&txs);
 
-            let state = self.state.lock().await;
-
-            let mut balance_deltas = state.get_latest().get_balances(&involved_pk);
+            let mut balance_deltas = self
+                .state
+                .lock()
+                .await
+                .get_latest()
+                .get_balances(&involved_pk);
 
             let mut valid_txs: Vec<Transaction> = vec![];
             let mut valid_index: Vec<usize> = vec![];
@@ -165,6 +167,7 @@ impl BlockBuilder for Ledger {
                     nonce,
                 );
                 if blockhash.is_valid(1) {
+                    println!("Blockhash found : {}", blockhash);
                     let block = Block {
                         index: previous_index + 1,
                         blockhash,
@@ -179,12 +182,6 @@ impl BlockBuilder for Ledger {
                                 let mut mempool_guard = self.mem_pool.lock().await;
                                 valid_index.iter().rev().for_each(|index| {
                                     mempool_guard.swap_remove(*index);
-                                });
-                            }
-                            {
-                                let mut history_guard = self.transaction_history.lock().await;
-                                valid_txs.iter().for_each(|tx| {
-                                    history_guard.push(TransactionState::Success(tx.clone()));
                                 });
                             }
                             Some(block)
@@ -208,4 +205,20 @@ pub trait BlockBuilder {
         previous_index: u64,
         previous_blockhash: &Blockhash,
     ) -> Option<Block>;
+}
+
+#[tonic::async_trait]
+pub trait Explorer {
+    async fn get_transaction_history(&self) -> Vec<Transaction>;
+}
+
+#[tonic::async_trait]
+impl Explorer for Ledger {
+    async fn get_transaction_history(&self) -> Vec<Transaction> {
+        self.state
+            .lock()
+            .await
+            .get_latest()
+            .get_transaction_history()
+    }
 }

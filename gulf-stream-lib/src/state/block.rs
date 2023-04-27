@@ -74,6 +74,16 @@ pub enum TransactionState {
     Pending(Transaction),
 }
 
+impl TransactionState {
+    pub fn format(&self) -> String {
+        match self {
+            TransactionState::Success(tx) => format!("Success {}", tx.format()),
+            TransactionState::Fail(tx) => format!("Failed {}", tx.format()),
+            TransactionState::Pending(tx) => format!("Pending {}", tx.format()),
+        }
+    }
+}
+
 impl Into<Transaction> for TransactionState {
     fn into(self) -> Transaction {
         match self {
