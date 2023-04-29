@@ -1,2 +1,2 @@
 [workspace]
-members = ["gulf-stream-lib","gulf-stream-node","gulf-stream-explorer"]
+members = ["gulf-stream-lib","gulf-stream-node"]

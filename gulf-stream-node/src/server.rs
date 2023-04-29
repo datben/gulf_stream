@@ -19,10 +19,10 @@ struct Args {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
 
-    let addr = format!("[::1]:{}", args.port).parse()?;
+    let addr = format!("0.0.0.0:{}", args.port).parse()?;
 
     let other_nodes = if let Some(host_known) = args.host_known {
-        let host_known = format!("http://[::1]:{}", host_known);
+        let host_known = format!("http://0.0.0.0:{}", host_known);
         Mutex::new(vec![host_known.try_into().unwrap()])
     } else {
         Mutex::new(vec![])

@@ -9,7 +9,7 @@ use rand::rngs::OsRng;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut client = NodeClient::connect("http://[::1]:50051").await?;
+    let mut client = NodeClient::connect("http://0.0.0.0:50051").await?;
     let mut csprng = OsRng {};
     let keypair: Keypair = Keypair::generate(&mut csprng);
 
