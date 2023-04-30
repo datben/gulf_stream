@@ -44,16 +44,7 @@ impl Ledger {
         tokio::spawn(async move {
             loop {
                 let ledger = self.clone();
-                let latest_block = ledger
-                    .clone()
-                    .state
-                    .lock()
-                    .await
-                    .latest_links
-                    .get(0)
-                    .unwrap()
-                    .block
-                    .clone();
+                let latest_block = ledger.clone().state.lock().await.get_latest().block.clone();
                 println!(
                     "Ledger latest block : index = {:?}, blockhash = {}, tx = {}",
                     latest_block.index,
@@ -73,16 +64,7 @@ impl Ledger {
         tokio::spawn(async move {
             loop {
                 let ledger = self.clone();
-                let latest_block = ledger
-                    .clone()
-                    .state
-                    .lock()
-                    .await
-                    .latest_links
-                    .get(0)
-                    .unwrap()
-                    .block
-                    .clone();
+                let latest_block = ledger.clone().state.lock().await.get_latest().block.clone();
 
                 if let Some(block) = ledger
                     .clone()
