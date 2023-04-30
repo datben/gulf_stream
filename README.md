@@ -16,5 +16,7 @@ To run giant-turtle:
 
 ```shell
 cd giant-turtle
+npm i
+npm run protogen
 npm run dev
 ```

@@ -1,5 +1,5 @@
 use gulf_stream_lib::{
-    ed25519::signature::Signature,
+    ed25519::{publickey::PublicKey, signature::Signature},
     pb::{node_client::NodeClient, SendTransactionRequest},
     state::transaction::TransactionMessage,
 };
@@ -32,6 +32,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let request = tonic::Request::new(SendTransactionRequest {
         tx: Some(
             Signature::sign_payload(&keypair, 2, 10, msg)
+                .try_into()
+                .unwrap(),
+        ),
+    });
+
+    let response = client.send_transaction(request).await?;
+
+    println!("RESPONSE={:?}", response);
+
+    let keypair2: Keypair = Keypair::generate(&mut csprng);
+
+    let msg = TransactionMessage::Transfer {
+        to: PublicKey(keypair2.public),
+        amount: 17,
+    };
+
+    let request = tonic::Request::new(SendTransactionRequest {
+        tx: Some(
+            Signature::sign_payload(&keypair, 3, 2, msg)
                 .try_into()
                 .unwrap(),
         ),

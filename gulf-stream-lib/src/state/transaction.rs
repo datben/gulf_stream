@@ -233,7 +233,6 @@ impl BytesDeserialize for TransactionMessage {
                 });
             }
             1 => {
-                println!("here");
                 return Ok(Self::Transfer {
                     to: PublicKey::deserialize(value)?,
                     amount: u64::deserialize(value)?,

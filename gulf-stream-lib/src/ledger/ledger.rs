@@ -138,9 +138,8 @@ impl BlockBuilder for Ledger {
                 .get_balances(&involved_pk);
 
             let mut valid_txs: Vec<Transaction> = vec![];
-            let mut valid_index: Vec<usize> = vec![];
 
-            txs.into_iter().enumerate().for_each(|(index, tx)| {
+            txs.into_iter().for_each(|tx| {
                 let tx_balance_deltas = tx.get_balance_deltas();
                 tx_balance_deltas.iter().for_each(|(pk, delta)| {
                     if let Some(balance_delta) = balance_deltas.get_mut(pk) {
@@ -148,7 +147,6 @@ impl BlockBuilder for Ledger {
                         if delta_if_executed.is_positive_or_nil() {
                             *balance_delta = delta_if_executed;
                             valid_txs.push(tx.clone());
-                            valid_index.push(index);
                         }
                     } else {
                         balance_deltas.insert(pk.to_owned(), delta.to_owned());
@@ -182,8 +180,13 @@ impl BlockBuilder for Ledger {
                         Ok(_) => {
                             {
                                 let mut mempool_guard = self.mem_pool.lock().await;
-                                valid_index.iter().rev().for_each(|index| {
-                                    mempool_guard.swap_remove(*index);
+                                valid_txs.iter().for_each(|valid_tx| {
+                                    if let Some(index) = mempool_guard
+                                        .iter()
+                                        .position(|tx| tx.signature.eq(&valid_tx.signature))
+                                    {
+                                        mempool_guard.swap_remove(index);
+                                    }
                                 });
                             }
                             Some(block)

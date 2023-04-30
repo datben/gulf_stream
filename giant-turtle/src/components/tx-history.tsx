@@ -1,7 +1,7 @@
 import useRpc from "@giant-turtle/hooks/rpc";
 import { GetHistoryRequest, Transaction } from "@giant-turtle/proto/pb_pb";
 import { useEffect, useState } from "react";
-import TransactionCard from "./tx-card";
+import { TransactionResumeCard } from "./tx-card";
 
 export default function TxHistory() {
   const [history, setHistory] = useState<Transaction[]>([]);
@@ -16,7 +16,7 @@ export default function TxHistory() {
   return (
     <>
       {history.map((tx, i) => (
-        <li key={i}>{TransactionCard(tx)}</li>
+        <li key={i}>{TransactionResumeCard(tx)}</li>
       ))}
     </>
   );

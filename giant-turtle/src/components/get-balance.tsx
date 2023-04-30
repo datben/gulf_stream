@@ -2,6 +2,7 @@ import useRpc from "@giant-turtle/hooks/rpc";
 import { GetBalanceRequest } from "@giant-turtle/proto/pb_pb";
 import { base58 } from "@scure/base";
 import { useState } from "react";
+import { SeaShell } from "./sea-shell";
 
 export default function GetBalance() {
   const rpc = useRpc();
@@ -29,11 +30,18 @@ export default function GetBalance() {
       <form onSubmit={handleSubmit}>
         <label>
           Address :
-          <textarea value={address} onChange={handleChange} />{" "}
+          <textarea
+            value={address}
+            onChange={handleChange}
+            rows={1}
+            cols={50}
+          />{" "}
         </label>
-        <input type="submit" value="Submit" />
+        <input type="submit" value="Fetch" />
       </form>
-      <>Balance : {balance}</>
+      <>
+        Balance : {balance} {SeaShell(20, 20)}
+      </>
     </>
   );
 }
