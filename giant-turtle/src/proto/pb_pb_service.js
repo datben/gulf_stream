@@ -8,7 +8,7 @@ var Node = (function () {
   function Node() {}
   Node.serviceName = "pb.Node";
   return Node;
-})();
+}());
 
 Node.SendBlock = {
   methodName: "SendBlock",
@@ -16,7 +16,7 @@ Node.SendBlock = {
   requestStream: false,
   responseStream: false,
   requestType: pb_pb.SendBlockRequest,
-  responseType: pb_pb.GenericResponse,
+  responseType: pb_pb.GenericResponse
 };
 
 Node.SendTransaction = {
@@ -25,7 +25,7 @@ Node.SendTransaction = {
   requestStream: false,
   responseStream: false,
   requestType: pb_pb.SendTransactionRequest,
-  responseType: pb_pb.GenericResponse,
+  responseType: pb_pb.GenericResponse
 };
 
 Node.GetHistory = {
@@ -34,7 +34,7 @@ Node.GetHistory = {
   requestStream: false,
   responseStream: false,
   requestType: pb_pb.GetHistoryRequest,
-  responseType: pb_pb.TransactionHistory,
+  responseType: pb_pb.TransactionHistory
 };
 
 Node.GetBalance = {
@@ -43,7 +43,7 @@ Node.GetBalance = {
   requestStream: false,
   responseStream: false,
   requestType: pb_pb.GetBalanceRequest,
-  responseType: pb_pb.GetBalanceResponse,
+  responseType: pb_pb.GetBalanceResponse
 };
 
 exports.Node = Node;
@@ -53,11 +53,7 @@ function NodeClient(serviceHost, options) {
   this.options = options || {};
 }
 
-NodeClient.prototype.sendBlock = function sendBlock(
-  requestMessage,
-  metadata,
-  callback
-) {
+NodeClient.prototype.sendBlock = function sendBlock(requestMessage, metadata, callback) {
   if (arguments.length === 2) {
     callback = arguments[1];
   }
@@ -78,21 +74,17 @@ NodeClient.prototype.sendBlock = function sendBlock(
           callback(null, response.message);
         }
       }
-    },
+    }
   });
   return {
     cancel: function () {
       callback = null;
       client.close();
-    },
+    }
   };
 };
 
-NodeClient.prototype.sendTransaction = function sendTransaction(
-  requestMessage,
-  metadata,
-  callback
-) {
+NodeClient.prototype.sendTransaction = function sendTransaction(requestMessage, metadata, callback) {
   if (arguments.length === 2) {
     callback = arguments[1];
   }
@@ -113,21 +105,17 @@ NodeClient.prototype.sendTransaction = function sendTransaction(
           callback(null, response.message);
         }
       }
-    },
+    }
   });
   return {
     cancel: function () {
       callback = null;
       client.close();
-    },
+    }
   };
 };
 
-NodeClient.prototype.getHistory = function getHistory(
-  requestMessage,
-  metadata,
-  callback
-) {
+NodeClient.prototype.getHistory = function getHistory(requestMessage, metadata, callback) {
   if (arguments.length === 2) {
     callback = arguments[1];
   }
@@ -148,21 +136,17 @@ NodeClient.prototype.getHistory = function getHistory(
           callback(null, response.message);
         }
       }
-    },
+    }
   });
   return {
     cancel: function () {
       callback = null;
       client.close();
-    },
+    }
   };
 };
 
-NodeClient.prototype.getBalance = function getBalance(
-  requestMessage,
-  metadata,
-  callback
-) {
+NodeClient.prototype.getBalance = function getBalance(requestMessage, metadata, callback) {
   if (arguments.length === 2) {
     callback = arguments[1];
   }
@@ -183,14 +167,15 @@ NodeClient.prototype.getBalance = function getBalance(
           callback(null, response.message);
         }
       }
-    },
+    }
   });
   return {
     cancel: function () {
       callback = null;
       client.close();
-    },
+    }
   };
 };
 
 exports.NodeClient = NodeClient;
+
