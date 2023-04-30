@@ -30,9 +30,11 @@ impl Ledger {
         let rpc = GulfStreamRpc {
             ledger: self.clone(),
         };
+        let server = NodeServer::new(rpc);
         tokio::spawn(async move {
             Server::builder()
-                .add_service(NodeServer::new(rpc))
+                .accept_http1(true)
+                .add_service(tonic_web::enable(server))
                 .serve(socket)
                 .await
         })
