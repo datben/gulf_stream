@@ -5,10 +5,7 @@ use crate::err::GulfStreamError;
 use crate::ledger::ledger::{Explorer, Ledger};
 use crate::pb::node_client::NodeClient;
 use crate::pb::node_server::Node;
-use crate::pb::{
-    GenericResponse, GetBalanceRequest, GetBalanceResponse, GetHistoryRequest, SendBlockRequest,
-    SendTransactionRequest, TransactionHistory,
-};
+use crate::pb::*;
 use crate::state::block::Block;
 use crate::state::transaction::Transaction;
 use crate::utils::serde::BytesDeserialize;
@@ -35,6 +32,27 @@ impl Node for GulfStreamRpc {
             message: format!("Block {} inserted", block.blockhash),
         };
 
+        return Ok(Response::new(reply));
+    }
+
+    async fn get_latest_block(
+        &self,
+        _request: Request<GetLatestBlockRequest>,
+    ) -> Result<Response<GetLatestBlockResponse>, Status> {
+        let reply = GetLatestBlockResponse {
+            block: Some(
+                self.ledger
+                    .clone()
+                    .state
+                    .lock()
+                    .await
+                    .get_latest()
+                    .block
+                    .clone()
+                    .try_into()
+                    .unwrap(),
+            ),
+        };
         return Ok(Response::new(reply));
     }
 

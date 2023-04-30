@@ -7,11 +7,16 @@ export default function TxHistory() {
   const [history, setHistory] = useState<Transaction[]>([]);
   const rpc = useRpc();
   useEffect(() => {
-    rpc.getHistory(new GetHistoryRequest(), (e, v) => {
-      if (v) {
-        setHistory(v.getTransactionsList());
-      }
-    });
+    const call = setInterval(
+      () =>
+        rpc.getHistory(new GetHistoryRequest(), (e, v) => {
+          if (v) {
+            setHistory(v.getTransactionsList());
+          }
+        }),
+      5000
+    );
+    return () => clearInterval(call);
   });
   return (
     <>

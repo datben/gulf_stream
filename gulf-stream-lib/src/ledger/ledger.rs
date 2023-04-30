@@ -141,17 +141,34 @@ impl BlockBuilder for Ledger {
 
             txs.into_iter().for_each(|tx| {
                 let tx_balance_deltas = tx.get_balance_deltas();
-                tx_balance_deltas.iter().for_each(|(pk, delta)| {
-                    if let Some(balance_delta) = balance_deltas.get_mut(pk) {
-                        let delta_if_executed = delta.add(balance_delta.to_owned());
-                        if delta_if_executed.is_positive_or_nil() {
-                            *balance_delta = delta_if_executed;
-                            valid_txs.push(tx.clone());
+                if tx_balance_deltas.iter().fold(true, |res, (pk, delta)| {
+                    if res {
+                        if delta.is_positive_or_nil() {
+                            return true;
+                        } else {
+                            if let Some(balance_delta) = balance_deltas.get_mut(pk) {
+                                let delta_if_executed = delta.add(balance_delta.to_owned());
+                                return delta_if_executed.is_positive_or_nil();
+                            } else {
+                                return false;
+                            }
                         }
                     } else {
-                        balance_deltas.insert(pk.to_owned(), delta.to_owned());
+                        return res;
                     }
-                });
+                }) {
+                    valid_txs.push(tx);
+                    tx_balance_deltas.iter().for_each(|(pk, delta)| {
+                        if let Some(balance_delta) = balance_deltas.get_mut(pk) {
+                            let delta_if_executed = delta.add(balance_delta.to_owned());
+                            if delta_if_executed.is_positive_or_nil() {
+                                *balance_delta = delta_if_executed;
+                            }
+                        } else {
+                            balance_deltas.insert(pk.to_owned(), delta.to_owned());
+                        }
+                    });
+                }
             });
 
             if valid_txs.is_empty() {

@@ -6,6 +6,7 @@ service Node {
     rpc SendTransaction (SendTransactionRequest) returns (GenericResponse);
     rpc GetHistory (GetHistoryRequest) returns (TransactionHistory);
     rpc GetBalance (GetBalanceRequest) returns (GetBalanceResponse);
+    rpc GetLatestBlock (GetLatestBlockRequest) returns (GetLatestBlockResponse);
 }
 
 message GetBalanceRequest {
@@ -21,6 +22,13 @@ message GetHistoryRequest {
 
 message TransactionHistory{
     repeated Transaction transactions = 1;
+}
+
+message GetLatestBlockRequest {    
+}
+
+message GetLatestBlockResponse{
+    Block block = 1;
 }
 
 message Transaction {
