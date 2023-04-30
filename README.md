@@ -12,8 +12,9 @@ cargo run --bin gulf-stream-client
 
 ```
 
-To run the gulf-steam explorer :
+To run giant-turtle:
 
 ```shell
-cargo run --bin gulf-stream-explorer
+cd giant-turtle
+npm run dev
 ```
