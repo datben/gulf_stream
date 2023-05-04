@@ -7,12 +7,15 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "protogen":"./build-proto.sh"
+    "protogen": "./build-proto.sh"
   },
   "dependencies": {
     "@grpc/proto-loader": "^0.7.6",
     "@improbable-eng/grpc-web": "^0.15.0",
     "@scure/base": "^1.1.1",
+    "@solana/wallet-adapter-react": "^0.15.32",
+    "@solana/wallet-adapter-react-ui": "^0.9.31",
+    "@solana/wallet-adapter-wallets": "^0.19.16",
     "@types/node": "18.16.3",
     "@types/react": "18.2.0",
     "@types/react-dom": "18.2.1",

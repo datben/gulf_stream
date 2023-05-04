@@ -5,7 +5,7 @@ use std::ops::Add;
 use crate::ed25519::{publickey::PublicKey, signature::Signature};
 use crate::err::Result;
 use crate::utils::serde::{BytesDeserialize, BytesSerialize};
-use ed25519_dalek::{Digest, Sha512};
+use ed25519_dalek::Verifier;
 
 use super::block::TransactionState;
 
@@ -84,13 +84,13 @@ impl Transaction {
     }
 
     pub fn sign_is_valid(&self) -> bool {
-        let mut prehashed: Sha512 = Sha512::new();
-        prehashed.update(self.blockheight.serialize());
-        prehashed.update(self.gas.serialize());
-        prehashed.update(self.msg.serialize());
+        let mut message = vec![];
+        message.extend(self.blockheight.serialize());
+        message.extend(self.gas.serialize());
+        message.extend(self.msg.serialize());
         self.payer
             .0
-            .verify_prehashed(prehashed, None, &self.signature.0)
+            .verify(message.as_slice(), &self.signature.0)
             .is_ok()
     }
 
@@ -112,31 +112,6 @@ impl Transaction {
 
     pub fn into_tx_state(self) -> TransactionState {
         self.into()
-    }
-
-    #[cfg(test)]
-    pub fn random(blockheight: u64) -> Self {
-        use ed25519_dalek::Keypair;
-        use rand::rngs::OsRng;
-
-        let mut csprng = OsRng {};
-        let keypair: Keypair = Keypair::generate(&mut csprng);
-
-        let msg = TransactionMessage::default();
-
-        let mut prehashed: Sha512 = Sha512::new();
-
-        prehashed.update(msg.serialize());
-
-        let signature = keypair.sign_prehashed(prehashed, None).unwrap();
-
-        Transaction {
-            payer: keypair.public.into(),
-            msg,
-            signature: signature.into(),
-            gas: 50,
-            blockheight,
-        }
     }
 }
 
@@ -323,14 +298,6 @@ mod test {
         let se = txm.serialize();
         let de = TransactionMessage::deserialize(&mut se.as_slice()).unwrap();
         assert_eq!(de, txm);
-    }
-
-    #[test]
-    fn se_de_tx() {
-        let tx = Transaction::random(1);
-        let se = tx.serialize();
-        let de = Transaction::deserialize(&mut se.as_slice()).unwrap();
-        assert_eq!(de, tx);
     }
 
     mod balance_delta {

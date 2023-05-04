@@ -26,4 +26,4 @@ gulf-stream-lib = { path = "../gulf-stream-lib"}
 clap = { version = "4.1.11", features = ["derive"] }
 ed25519-dalek = "1.0.1"
 rand = {version = "0.7.0", features = ["getrandom"] }
-
+bs58 = "0.4.0"

@@ -1,6 +1,10 @@
 import { Transaction } from "@giant-turtle/proto/pb_pb";
 import { base58 } from "@scure/base";
 import { SeaShell } from "./sea-shell";
+import {
+  TransactionMessage,
+  decodeTransactionMessage,
+} from "@giant-turtle/serde/utils";
 
 export function TransactionResumeCard(tx: Transaction) {
   return (
@@ -53,34 +57,4 @@ function displayTransactionMessage(msg: TransactionMessage) {
   } else {
     return <>None</>;
   }
-}
-
-type TransactionMessage = {
-  mint?: { amount: number };
-  transfer?: { to: Uint8Array; amount: number };
-};
-
-function decodeTransactionMessage(data: Uint8Array): TransactionMessage {
-  const index = data[0];
-  if (index === 0) {
-    const amount = getU64fromArray(data.slice(1));
-    return { mint: { amount: amount } };
-  } else {
-    const pk = data.slice(1, 33);
-    const amount = getU64fromArray(data.slice(33));
-    return {
-      transfer: {
-        to: pk,
-        amount: amount,
-      },
-    };
-  }
-}
-
-function getU64fromArray(data: Uint8Array) {
-  let res = 0;
-  for (let i = 0; i < 8; i++) {
-    res = res + data[i] * 2 ** i;
-  }
-  return res;
 }

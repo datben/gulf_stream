@@ -3,7 +3,7 @@ use crate::{
     state::transaction::{Transaction, TransactionMessage},
     utils::serde::{BytesDeserialize, BytesSerialize},
 };
-use ed25519_dalek::{Digest, Keypair, Sha512};
+use ed25519_dalek::{Keypair, Signer};
 use hex_literal::hex;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -20,11 +20,11 @@ impl Signature {
         gas: u64,
         msg: TransactionMessage,
     ) -> Transaction {
-        let mut prehashed: Sha512 = Sha512::new();
-        prehashed.update(blockheight.serialize());
-        prehashed.update(gas.serialize());
-        prehashed.update(msg.serialize());
-        let signature = signer.sign_prehashed(prehashed, None).unwrap();
+        let mut message = vec![];
+        message.extend(blockheight.serialize());
+        message.extend(gas.serialize());
+        message.extend(msg.serialize());
+        let signature = signer.try_sign(message.as_slice()).unwrap();
         Transaction {
             blockheight,
             payer: signer.public.into(),
