@@ -1,4 +1,4 @@
-use std::sync::TryLockError;
+use std::{error::Error, fmt::Display, sync::TryLockError};
 
 use tonic::Status;
 
@@ -17,6 +17,14 @@ pub enum GulfStreamError {
     SerDeError(String),
 }
 pub type Result<T> = std::result::Result<T, GulfStreamError>;
+
+impl Display for GulfStreamError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.to_string())
+    }
+}
+
+impl Error for GulfStreamError {}
 
 impl Default for GulfStreamError {
     fn default() -> Self {

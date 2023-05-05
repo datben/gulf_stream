@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use gulf_stream_lib::{ledger::ledger::*, state::blockchain::Blockchain};
+use gulf_stream_lib::{ledger::ledger::*, state::blockchain::Blockchain, store::db};
 use tokio::sync::Mutex;
 
 use clap::Parser;
@@ -28,19 +28,27 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Mutex::new(vec![])
     };
 
+    let pg_runtime = db::run_db().await?;
+    pg_runtime.create_database("state").await?;
+
+    let pg = db::get_client(pg_runtime.full_db_uri("state")).await?;
+
     let ledger = Arc::new(Ledger {
         state: Mutex::new(Blockchain::default()),
         other_nodes,
         mem_pool: Mutex::new(vec![]),
+        db: Arc::new(pg),
     });
 
     let rpc_runtime = ledger.clone().run_rpc(addr);
     let node_runtime = ledger.clone().run_node();
     let logs = ledger.clone().run_logs();
+    let db_runtime = ledger.clone().run_db();
 
     rpc_runtime.await??;
     logs.await?;
     node_runtime.await?;
+    db_runtime.await??;
 
     Ok(())
 }

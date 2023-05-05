@@ -3,6 +3,7 @@ use std::ops::Add;
 use std::sync::Arc;
 
 use crate::ed25519::publickey::PublicKey;
+use crate::err::GulfStreamError;
 use crate::rpc::rpc::GulfStreamRpc;
 use crate::state::block::Block;
 use crate::state::blockchain::Blockchain;
@@ -12,14 +13,15 @@ use crate::{
     pb::{node_server::NodeServer, SendBlockRequest},
     rpc::rpc::Broadcaster,
 };
+
 use tokio::sync::Mutex;
 use tonic::transport::{Endpoint, Server};
 
-#[derive(Default)]
 pub struct Ledger {
     pub state: Mutex<Blockchain>,
     pub mem_pool: Mutex<Vec<Transaction>>,
     pub other_nodes: Mutex<Vec<Endpoint>>,
+    pub db: Arc<tokio_postgres::Client>,
 }
 
 impl Ledger {
@@ -37,6 +39,30 @@ impl Ledger {
                 .add_service(tonic_web::enable(server))
                 .serve(socket)
                 .await
+        })
+    }
+
+    pub fn run_db(
+        self: Arc<Ledger>,
+    ) -> tokio::task::JoinHandle<std::result::Result<(), GulfStreamError>> {
+        tokio::spawn(async move {
+            loop {
+                let pg = self.db.clone();
+
+                let result = pg
+                    .query(
+                        "CREATE TABLE blocks (
+                            blockheight         int,  
+                        blockhash            varchar(80),
+                    )",
+                        &[],
+                    )
+                    .await
+                    .map_err(|_| GulfStreamError::default())?;
+
+                // And then check that we got back the same string we sent over.
+                tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
+            }
         })
     }
 

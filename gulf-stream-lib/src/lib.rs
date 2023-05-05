@@ -5,3 +5,4 @@ pub mod pb;
 pub mod rpc;
 pub mod state;
 pub mod utils;
+pub mod store;
