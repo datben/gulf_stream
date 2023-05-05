@@ -16,7 +16,7 @@ export default function useLastestBlock() {
       5000
     );
     return () => clearInterval(call);
-  });
+  }, [rpc]);
 
   return useMemo(() => block, [block]);
 }

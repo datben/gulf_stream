@@ -6,11 +6,11 @@ require("@solana/wallet-adapter-react-ui/styles.css");
 
 export default function App({ Component, pageProps }: AppProps) {
   return (
-    <>
+    <div>
       <ContextProvider>
         <WalletMultiButton></WalletMultiButton>
         <Component {...pageProps} />
       </ContextProvider>
-    </>
+    </div>
   );
 }
