@@ -31,9 +31,12 @@ export default function MintTx() {
       tx.setGas(gas);
       tx.setMsg(new Uint8Array(msg));
       tx.setPayer(wallet.publicKey.toBytes());
-
-      const toSign = new Uint8Array(
-        u64ToArray(blockheight).concat(u64ToArray(gas)).concat(msg)
+      const toSign = new TextEncoder().encode(
+        base58.encode(
+          new Uint8Array(
+            u64ToArray(blockheight).concat(u64ToArray(gas)).concat(msg)
+          )
+        )
       );
       const sign = await wallet.signMessage(toSign);
 

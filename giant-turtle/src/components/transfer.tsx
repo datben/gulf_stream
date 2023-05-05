@@ -33,15 +33,20 @@ export default function TransferTx() {
         .concat(Array.from(base58.decode(pk)))
         .concat(u64ToArray(amount));
 
-      console.log(msg);
       tx.setBlockheight(blockheight);
       tx.setGas(gas);
       tx.setMsg(new Uint8Array(msg));
       tx.setPayer(wallet.publicKey.toBytes());
 
-      const toSign = new Uint8Array(
-        u64ToArray(blockheight).concat(u64ToArray(gas)).concat(msg)
+      const toSign = new TextEncoder().encode(
+        base58.encode(
+          new Uint8Array(
+            u64ToArray(blockheight).concat(u64ToArray(gas)).concat(msg)
+          )
+        )
       );
+
+      console.log(toSign);
       const sign = await wallet.signMessage(toSign);
 
       tx.setSignature(sign);

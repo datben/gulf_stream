@@ -88,9 +88,10 @@ impl Transaction {
         message.extend(self.blockheight.serialize());
         message.extend(self.gas.serialize());
         message.extend(self.msg.serialize());
+        let encoded = bs58::encode(message).into_vec();
         self.payer
             .0
-            .verify(message.as_slice(), &self.signature.0)
+            .verify(encoded.as_slice(), &self.signature.0)
             .is_ok()
     }
 
@@ -298,6 +299,15 @@ mod test {
         let se = txm.serialize();
         let de = TransactionMessage::deserialize(&mut se.as_slice()).unwrap();
         assert_eq!(de, txm);
+
+        let de = TransactionMessage::deserialize(
+            &mut &[
+                1, 149, 0, 236, 169, 122, 1, 180, 193, 179, 25, 171, 77, 240, 11, 4, 4, 40, 80, 26,
+                145, 223, 176, 39, 19, 31, 200, 89, 90, 211, 121, 186, 212, 55, 0, 0, 0, 0, 0, 0,
+                0,
+            ][..],
+        )
+        .unwrap();
     }
 
     mod balance_delta {

@@ -11,7 +11,6 @@ export default function App({ Component, pageProps }: AppProps) {
         <WalletMultiButton></WalletMultiButton>
         <Component {...pageProps} />
       </ContextProvider>
-      ;
     </>
   );
 }
