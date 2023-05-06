@@ -1,5 +1,6 @@
-use std::{error::Error, fmt::Display, sync::TryLockError};
+use std::{error::Error, fmt::Display, num::ParseIntError, sync::TryLockError};
 
+use pg_embed::pg_errors::PgEmbedError;
 use tonic::Status;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -14,6 +15,7 @@ pub enum GulfStreamError {
     DidNotFindPreviousBlock,
     FailDeserialisationOfTransaction,
     TxIsNotValid,
+    Generic(String),
     SerDeError(String),
 }
 pub type Result<T> = std::result::Result<T, GulfStreamError>;
@@ -35,6 +37,24 @@ impl Default for GulfStreamError {
 impl<T> From<TryLockError<T>> for GulfStreamError {
     fn from(_value: TryLockError<T>) -> Self {
         Self::TryLockError
+    }
+}
+
+impl From<tokio_postgres::Error> for GulfStreamError {
+    fn from(value: tokio_postgres::Error) -> Self {
+        GulfStreamError::Generic(value.to_string())
+    }
+}
+
+impl From<ParseIntError> for GulfStreamError {
+    fn from(value: ParseIntError) -> Self {
+        GulfStreamError::Generic(value.to_string())
+    }
+}
+
+impl From<PgEmbedError> for GulfStreamError {
+    fn from(value: PgEmbedError) -> Self {
+        GulfStreamError::Generic(value.to_string())
     }
 }
 
@@ -61,6 +81,9 @@ impl Into<String> for GulfStreamError {
             }
             GulfStreamError::SerDeError(s) => {
                 format!("Failed to De/Serialize {}", s)
+            }
+            GulfStreamError::Generic(s) => {
+                format!("Error : {}", s)
             }
         }
     }

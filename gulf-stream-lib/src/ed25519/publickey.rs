@@ -5,7 +5,7 @@ use crate::{
 use core::hash::Hash;
 use std::hash::Hasher;
 
-#[derive(Debug, Clone, PartialEq, Default, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PublicKey(pub ed25519_dalek::PublicKey);
 
 impl PublicKey {
@@ -27,6 +27,12 @@ impl PublicKey {
         let mut csprng = OsRng {};
         let keypair: Keypair = Keypair::generate(&mut csprng);
         return Self(keypair.public);
+    }
+}
+
+impl Default for PublicKey {
+    fn default() -> Self {
+        Self::try_from_str("6JphWw6252kiBMLYUsJzc2sAhR5TFwXjU61ezi6My164").unwrap()
     }
 }
 

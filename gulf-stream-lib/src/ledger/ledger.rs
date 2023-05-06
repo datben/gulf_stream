@@ -9,6 +9,7 @@ use crate::state::block::Block;
 use crate::state::blockchain::Blockchain;
 use crate::state::blockhash::Blockhash;
 use crate::state::transaction::Transaction;
+use crate::store::db::DbClient;
 use crate::{
     pb::{node_server::NodeServer, SendBlockRequest},
     rpc::rpc::Broadcaster,
@@ -21,7 +22,7 @@ pub struct Ledger {
     pub state: Mutex<Blockchain>,
     pub mem_pool: Mutex<Vec<Transaction>>,
     pub other_nodes: Mutex<Vec<Endpoint>>,
-    pub db: Arc<tokio_postgres::Client>,
+    pub db: Arc<DbClient>,
 }
 
 impl Ledger {
@@ -49,16 +50,9 @@ impl Ledger {
             loop {
                 let pg = self.db.clone();
 
-                let result = pg
-                    .query(
-                        "CREATE TABLE blocks (
-                            blockheight         int,  
-                        blockhash            varchar(80),
-                    )",
-                        &[],
-                    )
-                    .await
-                    .map_err(|_| GulfStreamError::default())?;
+                let res = pg.get_tx(&Default::default()).await?;
+
+                dbg!(res);
 
                 // And then check that we got back the same string we sent over.
                 tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;

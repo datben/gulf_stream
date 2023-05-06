@@ -4,7 +4,6 @@ use crate::{
     utils::serde::{BytesDeserialize, BytesSerialize},
 };
 use ed25519_dalek::{Keypair, Signer};
-use hex_literal::hex;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Signature(pub ed25519_dalek::Signature);
@@ -12,6 +11,13 @@ pub struct Signature(pub ed25519_dalek::Signature);
 impl Signature {
     pub fn into_string(&self) -> String {
         Into::<String>::into(self)
+    }
+
+    pub fn try_from_str(s: &str) -> Result<Self> {
+        let bytes = bs58::decode(s)
+            .into_vec()
+            .map_err(|_| GulfStreamError::SerDeError("Signature".into()))?;
+        Self::deserialize(&mut &bytes[..])
     }
 
     pub fn sign_payload(
@@ -43,10 +49,8 @@ impl Into<String> for &Signature {
 
 impl Default for Signature {
     fn default() -> Self {
-        Self(
-            ed25519_dalek::Signature::from_bytes(&hex!("2A80234CCDFA3FC3C8DC7B24394DAB4CF00A63E7F646B49540256192A635FCEE3A7ED14898A1AAC09950BC4F1EAA1569EEA23C33537EA68DF0F41990FF384F08"))
-            .unwrap(),
-        )
+        Self::try_from_str("4K9HxzmBv5ALfq9nMZS7jewM5XbBqFEgkKxpW3j7gExPmmACAaFY7kdFfUvt1W7oPkPHPtGgWWH6XjT1g17cT2wZ")
+            .unwrap()
     }
 }
 

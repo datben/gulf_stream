@@ -1,6 +1,10 @@
-use std::sync::Arc;
+use std::{path::PathBuf, sync::Arc};
 
-use gulf_stream_lib::{ledger::ledger::*, state::blockchain::Blockchain, store::db};
+use gulf_stream_lib::{
+    ledger::ledger::*,
+    state::{blockchain::Blockchain, transaction::Transaction},
+    store::db::DbClient,
+};
 use tokio::sync::Mutex;
 
 use clap::Parser;
@@ -13,6 +17,9 @@ struct Args {
 
     #[arg(long)]
     host_known: Option<u64>,
+
+    #[arg(short, long, default_value_t = false)]
+    reset: bool,
 }
 
 #[tokio::main]
@@ -28,16 +35,37 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Mutex::new(vec![])
     };
 
-    let pg_runtime = db::run_db().await?;
-    pg_runtime.create_database("state").await?;
+    if args.reset {
+        std::fs::remove_dir_all(PathBuf::from("./data"))?;
+    }
 
-    let pg = db::get_client(pg_runtime.full_db_uri("state")).await?;
+    let pg_runtime = DbClient::launch_pg_embed().await?;
+
+    if args.reset {
+        pg_runtime.create_database("state").await?;
+    }
+
+    let client = DbClient::new(pg_runtime.full_db_uri("state")).await?;
+
+    if args.reset {
+        client.init_tables().await?;
+    }
+
+    client
+        .insert_tx(&Transaction {
+            blockheight: 5,
+            gas: 62,
+            msg: Default::default(),
+            payer: Default::default(),
+            signature: Default::default(),
+        })
+        .await?;
 
     let ledger = Arc::new(Ledger {
         state: Mutex::new(Blockchain::default()),
         other_nodes,
         mem_pool: Mutex::new(vec![]),
-        db: Arc::new(pg),
+        db: Arc::new(client),
     });
 
     let rpc_runtime = ledger.clone().run_rpc(addr);
