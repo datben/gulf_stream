@@ -94,3 +94,13 @@ impl Into<Status> for GulfStreamError {
         Status::aborted(self)
     }
 }
+
+impl GulfStreamError {
+    pub fn map<T: Into<String>>(value: T) -> Self {
+        GulfStreamError::Generic(Into::into(value))
+    }
+
+    pub fn map_to_status<T: Into<String>>(value: T) -> Status {
+        GulfStreamError::map(value).into()
+    }
+}

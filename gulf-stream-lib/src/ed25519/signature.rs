@@ -30,7 +30,8 @@ impl Signature {
         message.extend(blockheight.serialize());
         message.extend(gas.serialize());
         message.extend(msg.serialize());
-        let signature = signer.try_sign(message.as_slice()).unwrap();
+        let encoded = bs58::encode(message).into_vec();
+        let signature = signer.try_sign(encoded.as_slice()).unwrap();
         Transaction {
             blockheight,
             payer: signer.public.into(),

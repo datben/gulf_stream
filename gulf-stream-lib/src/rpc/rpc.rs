@@ -60,11 +60,13 @@ impl Node for GulfStreamRpc {
         &self,
         request: Request<SendTransactionRequest>,
     ) -> Result<Response<GenericResponse>, Status> {
-        let tx: Transaction = request.into_inner().tx.unwrap().try_into().unwrap();
-
-        dbg!(tx.payer.into_string());
-        dbg!(tx.sign_is_valid());
-        dbg!(tx.tx_msg_is_valid());
+        let tx: Transaction = request
+            .into_inner()
+            .tx
+            .ok_or(GulfStreamError::Generic("Empty Tx".into()))
+            .map_err(GulfStreamError::map_to_status)?
+            .try_into()
+            .map_err(GulfStreamError::map_to_status)?;
 
         if !(tx.sign_is_valid() && tx.tx_msg_is_valid()) {
             return Err(GulfStreamError::TxIsNotValid.into());
@@ -73,6 +75,10 @@ impl Node for GulfStreamRpc {
         let reply = GenericResponse {
             message: format!("Tx {:?} inserted", tx.signature),
         };
+
+        if let Err(err) = self.ledger.db.insert_tx(&tx).await {
+            return Err(err.into());
+        }
 
         self.ledger.mem_pool.lock().await.push(tx);
 

@@ -47,6 +47,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let client = DbClient::new(pg_runtime.full_db_uri("state")).await?;
 
+    println!("DB uri {}", pg_runtime.full_db_uri("state"));
+
     if args.reset {
         client.init_tables().await?;
     }

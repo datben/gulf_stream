@@ -48,13 +48,6 @@ impl Ledger {
     ) -> tokio::task::JoinHandle<std::result::Result<(), GulfStreamError>> {
         tokio::spawn(async move {
             loop {
-                let pg = self.db.clone();
-
-                let res = pg.get_tx(&Default::default()).await?;
-
-                dbg!(res);
-
-                // And then check that we got back the same string we sent over.
                 tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
             }
         })
