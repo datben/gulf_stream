@@ -40,8 +40,8 @@ impl<T> From<TryLockError<T>> for GulfStreamError {
     }
 }
 
-impl From<tokio_postgres::Error> for GulfStreamError {
-    fn from(value: tokio_postgres::Error) -> Self {
+impl From<sqlx::Error> for GulfStreamError {
+    fn from(value: sqlx::Error) -> Self {
         GulfStreamError::Generic(value.to_string())
     }
 }
