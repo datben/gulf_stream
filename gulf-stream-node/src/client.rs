@@ -4,11 +4,12 @@ use gulf_stream_lib::{
     state::transaction::TransactionMessage,
 };
 
+use anyhow::Result;
 use ed25519_dalek::Keypair;
 use rand::rngs::OsRng;
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> Result<()> {
     let mut client = NodeClient::connect("http://0.0.0.0:50051").await?;
     let mut csprng = OsRng {};
     let keypair: Keypair = Keypair::generate(&mut csprng);

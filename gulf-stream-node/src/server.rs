@@ -7,6 +7,7 @@ use gulf_stream_lib::{
 };
 use tokio::sync::Mutex;
 
+use anyhow::Result;
 use clap::Parser;
 
 #[derive(Parser, Debug)]
@@ -23,7 +24,7 @@ struct Args {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> Result<()> {
     let args = Args::parse();
 
     let addr = format!("0.0.0.0:{}", args.port).parse()?;
@@ -77,7 +78,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     rpc_runtime.await??;
     logs.await?;
-    node_runtime.await?;
+    node_runtime.await??;
     db_runtime.await??;
 
     Ok(())
