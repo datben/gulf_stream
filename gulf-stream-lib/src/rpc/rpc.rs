@@ -22,7 +22,13 @@ impl Node for GulfStreamRpc {
         &self,
         request: Request<SendBlockRequest>,
     ) -> Result<Response<GenericResponse>, Status> {
-        let block: Block = request.into_inner().block.unwrap().try_into().unwrap();
+        let block: Block = request
+            .into_inner()
+            .block
+            .ok_or(GulfStreamError::BlockIsNotValid)
+            .map_err(GulfStreamError::map_to_status)?
+            .try_into()
+            .map_err(GulfStreamError::map_to_status)?;
 
         if let Err(err) = self.ledger.state.lock().await.try_insert(&block) {
             return Err(err.into());
@@ -50,7 +56,11 @@ impl Node for GulfStreamRpc {
                     .block
                     .clone()
                     .try_into()
-                    .unwrap(),
+                    .map_err(|_| {
+                        GulfStreamError::map_to_status(GulfStreamError::Generic(
+                            "Failed to get lastest block".into(),
+                        ))
+                    })?,
             ),
         };
         return Ok(Response::new(reply));
@@ -95,7 +105,11 @@ impl Node for GulfStreamRpc {
                 .into_iter()
                 .map(TryInto::try_into)
                 .collect::<Result<_, _>>()
-                .unwrap(),
+                .map_err(|_| {
+                    GulfStreamError::map_to_status(GulfStreamError::Generic(
+                        "Failed to get history".into(),
+                    ))
+                })?,
         };
         return Ok(Response::new(reply));
     }
@@ -104,12 +118,15 @@ impl Node for GulfStreamRpc {
         &self,
         request: Request<GetBalanceRequest>,
     ) -> Result<Response<GetBalanceResponse>, Status> {
-        let balance =
-            self.ledger.state.lock().await.get_latest().get_balance(
-                &PublicKey::deserialize(&mut &request.into_inner().address[..]).unwrap(),
-            );
+        let balance = self.ledger.state.lock().await.get_latest().get_balance(
+            &PublicKey::deserialize(&mut &request.into_inner().address[..])
+                .map_err(GulfStreamError::map_to_status)?,
+        );
         let reply = GetBalanceResponse {
-            balance: balance.to_u64().unwrap(),
+            balance: balance
+                .to_u64()
+                .ok_or(GulfStreamError::Generic("Balance Negative".into()))
+                .map_err(GulfStreamError::map_to_status)?,
         };
         return Ok(Response::new(reply));
     }

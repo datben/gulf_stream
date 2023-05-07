@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::ops::Add;
 
 use crate::ed25519::{publickey::PublicKey, signature::Signature};
-use crate::err::Result;
+use crate::err::GulfStreamError;
 use crate::utils::serde::{BytesDeserialize, BytesSerialize};
 use ed25519_dalek::Verifier;
 
@@ -133,7 +133,7 @@ impl BytesSerialize for Transaction {
 }
 
 impl BytesDeserialize for Transaction {
-    fn deserialize(buf: &mut &[u8]) -> Result<Self> {
+    fn deserialize(buf: &mut &[u8]) -> Result<Self, GulfStreamError> {
         Ok(Self {
             blockheight: u64::deserialize(buf)?,
             gas: u64::deserialize(buf)?,
@@ -199,7 +199,7 @@ impl BytesSerialize for TransactionMessage {
 }
 
 impl BytesDeserialize for TransactionMessage {
-    fn deserialize(value: &mut &[u8]) -> Result<Self> {
+    fn deserialize(value: &mut &[u8]) -> Result<Self, GulfStreamError> {
         let index = value[0];
         *value = &value[1..];
         match index {

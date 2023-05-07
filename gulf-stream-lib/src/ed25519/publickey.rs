@@ -13,7 +13,7 @@ impl PublicKey {
         Into::<String>::into(self)
     }
 
-    pub fn try_from_str(s: &str) -> Result<Self> {
+    pub fn try_from_str(s: &str) -> Result<Self, GulfStreamError> {
         let bytes = bs58::decode(s)
             .into_vec()
             .map_err(|_| GulfStreamError::SerDeError("Publickey".into()))?;
@@ -43,7 +43,7 @@ impl Hash for PublicKey {
 }
 
 impl BytesDeserialize for PublicKey {
-    fn deserialize(buf: &mut &[u8]) -> Result<Self> {
+    fn deserialize(buf: &mut &[u8]) -> Result<Self, GulfStreamError> {
         let data = &buf[..32];
         *buf = &buf[32..];
         Ok(Self(ed25519_dalek::PublicKey::from_bytes(data).map_err(

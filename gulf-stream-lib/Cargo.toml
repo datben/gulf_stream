@@ -18,6 +18,8 @@ tonic-web = "0.9.2"
 pg-embed = "0.7.1"
 sqlx = { version = "0.6.3", features = [ "runtime-tokio-rustls" , "postgres" ] }
 tokio = { version = "1.0", features = ["full"] }
+anyhow = "1.0.71"
+thiserror = "1.0.40"
 
 [build-dependencies]
 tonic-build = "0.9.2"

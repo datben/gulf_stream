@@ -19,7 +19,11 @@ pub struct Link {
 }
 
 impl Link {
-    pub fn try_find_block(self: Arc<Link>, blockhash: &Blockhash, index: u64) -> Result<Arc<Link>> {
+    pub fn try_find_block(
+        self: Arc<Link>,
+        blockhash: &Blockhash,
+        index: u64,
+    ) -> Result<Arc<Link>, GulfStreamError> {
         if index == self.block.index {
             if blockhash.eq(&self.block.blockhash) {
                 Ok(self.clone())
@@ -41,7 +45,7 @@ impl Link {
         }
     }
 
-    pub fn try_insert(self: Arc<Link>, block: &Block) -> Result<Arc<Link>> {
+    pub fn try_insert(self: Arc<Link>, block: &Block) -> Result<Arc<Link>, GulfStreamError> {
         return if block.index == self.block.index + 1 {
             if block.previous_blockhash.eq(&self.block.blockhash) {
                 self.unsafe_insert(block.clone())
@@ -77,7 +81,7 @@ impl Link {
         return balances;
     }
 
-    fn unsafe_insert(self: Arc<Link>, block: Block) -> Result<Arc<Link>> {
+    fn unsafe_insert(self: Arc<Link>, block: Block) -> Result<Arc<Link>, GulfStreamError> {
         let new_link = Arc::new(Self {
             block_parent: self.clone().into(),
             block,

@@ -3,7 +3,6 @@ use std::ops::Add;
 use std::sync::Arc;
 
 use crate::ed25519::publickey::PublicKey;
-use crate::err::GulfStreamError;
 use crate::rpc::rpc::GulfStreamRpc;
 use crate::state::block::Block;
 use crate::state::blockchain::Blockchain;
@@ -18,6 +17,8 @@ use crate::{
 use tokio::sync::Mutex;
 use tonic::transport::{Endpoint, Server};
 
+use anyhow::Result;
+
 pub struct Ledger {
     pub state: Mutex<Blockchain>,
     pub mem_pool: Mutex<Vec<Transaction>>,
@@ -26,10 +27,7 @@ pub struct Ledger {
 }
 
 impl Ledger {
-    pub fn run_rpc(
-        self: Arc<Ledger>,
-        socket: SocketAddr,
-    ) -> tokio::task::JoinHandle<std::result::Result<(), tonic::transport::Error>> {
+    pub fn run_rpc(self: Arc<Ledger>, socket: SocketAddr) -> tokio::task::JoinHandle<Result<()>> {
         let rpc = GulfStreamRpc {
             ledger: self.clone(),
         };
@@ -40,12 +38,11 @@ impl Ledger {
                 .add_service(tonic_web::enable(server))
                 .serve(socket)
                 .await
+                .map_err(Into::into)
         })
     }
 
-    pub fn run_db(
-        self: Arc<Ledger>,
-    ) -> tokio::task::JoinHandle<std::result::Result<(), GulfStreamError>> {
+    pub fn run_db(self: Arc<Ledger>) -> tokio::task::JoinHandle<Result<()>> {
         tokio::spawn(async move {
             loop {
                 tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
@@ -73,7 +70,7 @@ impl Ledger {
         })
     }
 
-    pub fn run_node(self: Arc<Ledger>) -> tokio::task::JoinHandle<()> {
+    pub fn run_node(self: Arc<Ledger>) -> tokio::task::JoinHandle<Result<()>> {
         tokio::spawn(async move {
             loop {
                 let ledger = self.clone();
@@ -86,7 +83,7 @@ impl Ledger {
                 {
                     match self
                         .broadcast(SendBlockRequest {
-                            block: Some(block.try_into().unwrap()),
+                            block: Some(block.try_into()?),
                         })
                         .await
                     {

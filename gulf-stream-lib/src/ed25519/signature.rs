@@ -1,5 +1,5 @@
 use crate::{
-    err::{GulfStreamError, Result},
+    err::GulfStreamError,
     state::transaction::{Transaction, TransactionMessage},
     utils::serde::{BytesDeserialize, BytesSerialize},
 };
@@ -13,7 +13,7 @@ impl Signature {
         Into::<String>::into(self)
     }
 
-    pub fn try_from_str(s: &str) -> Result<Self> {
+    pub fn try_from_str(s: &str) -> Result<Self, GulfStreamError> {
         let bytes = bs58::decode(s)
             .into_vec()
             .map_err(|_| GulfStreamError::SerDeError("Signature".into()))?;
@@ -62,7 +62,7 @@ impl BytesSerialize for Signature {
 }
 
 impl BytesDeserialize for Signature {
-    fn deserialize(buf: &mut &[u8]) -> Result<Self> {
+    fn deserialize(buf: &mut &[u8]) -> Result<Self, GulfStreamError> {
         let data = &buf[..ed25519_dalek::SIGNATURE_LENGTH];
         *buf = &buf[ed25519_dalek::SIGNATURE_LENGTH..];
         Ok(Self(ed25519_dalek::Signature::from_bytes(data).map_err(

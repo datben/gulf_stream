@@ -11,7 +11,7 @@ pub struct Blockchain {
 impl Blockchain {
     pub const LASTEST_LINK_LENGTH: usize = 10;
 
-    pub fn try_insert(&mut self, block: &Block) -> Result<()> {
+    pub fn try_insert(&mut self, block: &Block) -> Result<(), GulfStreamError> {
         if self.is_valid(block) {
             if let Some(new_link) = self.latest_links.iter().fold(None, |res, link| match res {
                 Some(_) => res,

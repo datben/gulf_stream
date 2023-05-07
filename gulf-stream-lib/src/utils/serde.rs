@@ -1,7 +1,7 @@
-use crate::err::{GulfStreamError, Result};
+use crate::err::GulfStreamError;
 
 pub trait BytesDeserialize {
-    fn deserialize(buf: &mut &[u8]) -> Result<Self>
+    fn deserialize(buf: &mut &[u8]) -> Result<Self, GulfStreamError>
     where
         Self: Sized;
 }
@@ -11,7 +11,7 @@ pub trait BytesSerialize {
 }
 
 impl BytesDeserialize for u64 {
-    fn deserialize(buf: &mut &[u8]) -> Result<Self>
+    fn deserialize(buf: &mut &[u8]) -> Result<Self, GulfStreamError>
     where
         Self: Sized,
     {
@@ -31,7 +31,7 @@ impl BytesSerialize for u64 {
 }
 
 impl BytesDeserialize for bool {
-    fn deserialize(buf: &mut &[u8]) -> Result<Self>
+    fn deserialize(buf: &mut &[u8]) -> Result<Self, GulfStreamError>
     where
         Self: Sized,
     {
@@ -42,7 +42,7 @@ impl BytesDeserialize for bool {
         } else if data == 0 {
             Ok(false)
         } else {
-            Err(crate::err::GulfStreamError::SerDeError("bool".into()))
+            Err(crate::err::GulfStreamError::SerDeError("bool".into()).into())
         }
     }
 }
